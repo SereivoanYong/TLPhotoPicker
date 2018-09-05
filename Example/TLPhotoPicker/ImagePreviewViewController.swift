@@ -13,7 +13,7 @@ import TLPhotoPicker
 class ImagePreviewViewController: UIViewController {
     @IBOutlet var imageView: UIImageView!
     
-    var assets: TLPHAsset? = nil
+    var assets: SVAsset? = nil
     
     required init?(coder aDecoder: NSCoder) {
         fatalError("init(coder:) has not been implemented")

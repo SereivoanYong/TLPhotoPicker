@@ -13,7 +13,7 @@ import MobileCoreServices
 
 public protocol TLPhotosPickerViewControllerDelegate: class {
   func dismissPhotoPicker(withPHAssets: [PHAsset])
-  func dismissPhotoPicker(withTLPHAssets: [TLPHAsset])
+  func dismissPhotoPicker(withTLPHAssets: [SVAsset])
   func dismissComplete()
   func photoPickerDidCancel()
   func canSelectAsset(phAsset: PHAsset) -> Bool
@@ -25,7 +25,7 @@ public protocol TLPhotosPickerViewControllerDelegate: class {
 extension TLPhotosPickerViewControllerDelegate {
   public func deninedAuthoization() { }
   public func dismissPhotoPicker(withPHAssets: [PHAsset]) { }
-  public func dismissPhotoPicker(withTLPHAssets: [TLPHAsset]) { }
+  public func dismissPhotoPicker(withTLPHAssets: [SVAsset]) { }
   public func dismissComplete() { }
   public func photoPickerDidCancel() { }
   public func canSelectAsset(phAsset: PHAsset) -> Bool { return true }
@@ -114,7 +114,7 @@ open class TLPhotosPickerViewController: UIViewController {
   
   public weak var delegate: TLPhotosPickerViewControllerDelegate? = nil
   public weak var logDelegate: TLPhotosPickerLogDelegate? = nil
-  public var selectedAssets = [TLPHAsset]()
+  public var selectedAssets = [SVAsset]()
   public var configure = TLPhotosPickerConfigure()
   
   fileprivate var usedCameraButton: Bool {
@@ -149,7 +149,7 @@ open class TLPhotosPickerViewController: UIViewController {
   @objc open var handleNoCameraPermissions: ((TLPhotosPickerViewController) -> Void)? = nil
   @objc open var dismissCompletion: (() -> Void)? = nil
   fileprivate var completionWithPHAssets: (([PHAsset]) -> Void)? = nil
-  fileprivate var completionWithTLPHAssets: (([TLPHAsset]) -> Void)? = nil
+  fileprivate var completionWithTLPHAssets: (([SVAsset]) -> Void)? = nil
   fileprivate var didCancel: (() -> Void)? = nil
   
   fileprivate var collections = [TLAssetsCollection]()
@@ -181,7 +181,7 @@ open class TLPhotosPickerViewController: UIViewController {
     self.didCancel = didCancel
   }
   
-  convenience public init(withTLPHAssets: (([TLPHAsset]) -> Void)? = nil, didCancel: (() -> Void)? = nil) {
+  convenience public init(withTLPHAssets: (([SVAsset]) -> Void)? = nil, didCancel: (() -> Void)? = nil) {
     self.init()
     self.completionWithTLPHAssets = withTLPHAssets
     self.didCancel = didCancel
@@ -523,7 +523,7 @@ extension TLPhotosPickerViewController: UIImagePickerControllerDelegate, UINavig
       }, completionHandler: { [weak self] (sucess, error) in
         if sucess, let `self` = self, let identifier = placeholderAsset?.localIdentifier {
           guard let asset = PHAsset.fetchAssets(withLocalIdentifiers: [identifier], options: nil).firstObject else { return }
-          var result = TLPHAsset(asset: asset)
+          var result = SVAsset(asset: asset)
           result.selectedOrder = self.selectedAssets.count + 1
           self.selectedAssets.append(result)
           self.logDelegate?.selectedPhoto(picker: self, at: 1)
@@ -538,7 +538,7 @@ extension TLPhotosPickerViewController: UIImagePickerControllerDelegate, UINavig
       }) { [weak self] (sucess, error) in
         if sucess, let `self` = self, let identifier = placeholderAsset?.localIdentifier {
           guard let asset = PHAsset.fetchAssets(withLocalIdentifiers: [identifier], options: nil).firstObject else { return }
-          var result = TLPHAsset(asset: asset)
+          var result = SVAsset(asset: asset)
           result.selectedOrder = self.selectedAssets.count + 1
           self.selectedAssets.append(result)
           self.logDelegate?.selectedPhoto(picker: self, at: 1)
@@ -563,7 +563,7 @@ extension TLPhotosPickerViewController {
   }
   
   fileprivate func videoCheck() {
-    func play(asset: (IndexPath,TLPHAsset)) {
+    func play(asset: (IndexPath,SVAsset)) {
       if self.playRequestId?.indexPath != asset.0 {
         playVideo(asset: asset.1, indexPath: asset.0)
       }
@@ -572,7 +572,7 @@ extension TLPhotosPickerViewController {
     guard self.playRequestId == nil else { return }
     let visibleIndexPaths = self.collectionView.indexPathsForVisibleItems.sorted(by: { $0.row < $1.row })
     #if swift(>=4.1)
-    let boundAssets = visibleIndexPaths.compactMap{ indexPath -> (IndexPath,TLPHAsset)? in
+    let boundAssets = visibleIndexPaths.compactMap{ indexPath -> (IndexPath,SVAsset)? in
       guard let asset = self.focusedCollection?.getTLAsset(at: indexPath.row),asset.phAsset?.mediaType == .video else { return nil }
       return (indexPath,asset)
     }
@@ -599,7 +599,7 @@ extension TLPhotosPickerViewController: PHLivePhotoViewDelegate {
     cell.stopPlay()
   }
   
-  fileprivate func playVideo(asset: TLPHAsset, indexPath: IndexPath) {
+  fileprivate func playVideo(asset: SVAsset, indexPath: IndexPath) {
     stopPlay()
     guard let phAsset = asset.phAsset else { return }
     if asset.type == .video {
@@ -652,7 +652,7 @@ extension TLPhotosPickerViewController: PHPhotoLibraryChangeObserver {
         var deletedSelectedAssets = false
         var order = 0
         #if swift(>=4.1)
-        self.selectedAssets = self.selectedAssets.enumerated().compactMap({ (offset,asset) -> TLPHAsset? in
+        self.selectedAssets = self.selectedAssets.enumerated().compactMap({ (offset,asset) -> SVAsset? in
           var asset = asset
           if let phAsset = asset.phAsset, changes.fetchResultAfterChanges.contains(phAsset) {
             order += 1
@@ -706,7 +706,7 @@ extension TLPhotosPickerViewController: PHPhotoLibraryChangeObserver {
 
 // MARK: - UICollectionView delegate & datasource
 extension TLPhotosPickerViewController: UICollectionViewDelegate,UICollectionViewDataSource,UICollectionViewDataSourcePrefetching {
-  fileprivate func getSelectedAssets(_ asset: TLPHAsset) -> TLPHAsset? {
+  fileprivate func getSelectedAssets(_ asset: SVAsset) -> SVAsset? {
     if let index = self.selectedAssets.index(where: { $0.phAsset == asset.phAsset }) {
       return self.selectedAssets[index]
     }
@@ -751,7 +751,7 @@ extension TLPhotosPickerViewController: UICollectionViewDelegate,UICollectionVie
       self.logDelegate?.deselectedPhoto(picker: self, at: indexPath.row)
       self.selectedAssets.remove(at: index)
       #if swift(>=4.1)
-      self.selectedAssets = self.selectedAssets.enumerated().compactMap({ (offset,asset) -> TLPHAsset? in
+      self.selectedAssets = self.selectedAssets.enumerated().compactMap({ (offset,asset) -> SVAsset? in
         var asset = asset
         asset.selectedOrder = offset + 1
         return asset

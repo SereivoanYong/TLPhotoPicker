@@ -11,7 +11,7 @@ import Photos
 import PhotosUI
 import MobileCoreServices
 
-public struct TLPHAsset {
+public struct SVAsset {
   enum CloudDownloadState {
     case ready, progress, complete, failed
   }
@@ -273,8 +273,8 @@ public struct TLPHAsset {
   }
 }
 
-extension TLPHAsset: Equatable {
-  public static func ==(lhs: TLPHAsset, rhs: TLPHAsset) -> Bool {
+extension SVAsset: Equatable {
+  public static func ==(lhs: SVAsset, rhs: SVAsset) -> Bool {
     guard let lphAsset = lhs.phAsset, let rphAsset = rhs.phAsset else { return false }
     return lphAsset.localIdentifier == rphAsset.localIdentifier
   }
@@ -307,11 +307,11 @@ struct TLAssetsCollection {
     return result.object(at: max(index,0))
   }
   
-  func getTLAsset(at index: Int) -> TLPHAsset? {
+  func getTLAsset(at index: Int) -> SVAsset? {
     if self.useCameraButton && index == 0 { return nil }
     let index = index - (self.useCameraButton ? 1 : 0)
     guard let result = self.fetchResult, index < result.count else { return nil }
-    return TLPHAsset(asset: result.object(at: max(index,0)))
+    return SVAsset(asset: result.object(at: max(index,0)))
   }
   
   func getAssets(at range: CountableClosedRange<Int>) -> [PHAsset]? {

@@ -12,7 +12,7 @@ import Photos
 
 class ViewController: UIViewController,TLPhotosPickerViewControllerDelegate {
     
-    var selectedAssets = [TLPHAsset]()
+    var selectedAssets = [SVAsset]()
     @IBOutlet var label: UILabel!
     @IBOutlet var imageView: UIImageView!
     
@@ -83,7 +83,7 @@ class ViewController: UIViewController,TLPhotosPickerViewControllerDelegate {
         self.present(viewController.wrapNavigationControllerWithoutBar(), animated: true, completion: nil)
     }
     
-    func dismissPhotoPicker(withTLPHAssets: [TLPHAsset]) {
+    func dismissPhotoPicker(withTLPHAssets: [SVAsset]) {
         // use selected order, fullresolution image
         self.selectedAssets = withTLPHAssets
         getFirstSelectedImage()
