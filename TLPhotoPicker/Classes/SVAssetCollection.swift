@@ -12,21 +12,20 @@ import Photos
 struct SVAssetCollection {
   
   let phAssetCollection: PHAssetCollection
-  var fetchResult: PHFetchResult<PHAsset>? = nil
+  var fetchResult: PHFetchResult<PHAsset>?
   var useCameraButton: Bool = false
-  var recentPosition: CGPoint = CGPoint.zero
-  var title: String
+  var recentPosition: CGPoint = .zero
+  var title: String? {
+    return phAssetCollection.localizedTitle
+  }
   
   var count: Int {
-    get {
-      guard let count = self.fetchResult?.count, count > 0 else { return self.useCameraButton ? 1 : 0 }
-      return count + (self.useCameraButton ? 1 : 0)
-    }
+    guard let count = self.fetchResult?.count, count > 0 else { return self.useCameraButton ? 1 : 0 }
+    return count + (self.useCameraButton ? 1 : 0)
   }
   
   init(with phAssetCollection: PHAssetCollection) {
     self.phAssetCollection = phAssetCollection
-    self.title = phAssetCollection.localizedTitle ?? ""
   }
   
   func getAsset(at index: Int) -> PHAsset? {
@@ -51,20 +50,5 @@ struct SVAssetCollection {
   
   static func ==(lhs: SVAssetCollection, rhs: SVAssetCollection) -> Bool {
     return lhs.phAssetCollection.localIdentifier == rhs.phAssetCollection.localIdentifier
-  }
-}
-
-extension UIImage {
-  func upOrientationImage() -> UIImage? {
-    switch imageOrientation {
-    case .up:
-      return self
-    default:
-      UIGraphicsBeginImageContextWithOptions(size, false, scale)
-      draw(in: CGRect(origin: .zero, size: size))
-      let result = UIGraphicsGetImageFromCurrentImageContext()
-      UIGraphicsEndImageContext()
-      return result
-    }
   }
 }

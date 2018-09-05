@@ -12,6 +12,7 @@ import PhotosUI
 import MobileCoreServices
 
 public struct SVAsset {
+  
   enum CloudDownloadState {
     case ready, progress, complete, failed
   }
@@ -28,55 +29,52 @@ public struct SVAsset {
   public let phAsset: PHAsset
   public var selectedOrder: Int = 0
   public var type: AssetType {
-    get {
-      if phAsset.mediaSubtypes.contains(.photoLive) {
-        return .livePhoto
-      }else if phAsset.mediaType == .video {
-        return .video
-      }else {
-        return .photo
-      }
+    switch phAsset.mediaType {
+    case .image:
+      return phAsset.mediaSubtypes.contains(.photoLive) ? .livePhoto : .photo
+    case .video:
+      return .video
+    default:
+      fatalError()
     }
   }
   
   public var fullResolutionImage: UIImage? {
-    get {
-      return SVPhotoLibrary.fullResolutionImageData(asset: phAsset)
-    }
+    return SVPhotoLibrary.fullResolutionImageData(asset: phAsset)
   }
   
   public func extType() -> ImageExtType {
     var ext = ImageExtType.png
-    if let fileName = self.originalFileName, let extention = URL(string: fileName)?.pathExtension.lowercased() {
+    if let extention = URL(string: originalFileName)?.pathExtension.lowercased() {
       ext = ImageExtType(rawValue: extention) ?? .png
     }
     return ext
   }
   
   @discardableResult
-  public func cloudImageDownload(progressBlock: @escaping (Double) -> Void, completionBlock:@escaping (UIImage?)-> Void ) -> PHImageRequestID? {
-    return SVPhotoLibrary.cloudImageDownload(asset: phAsset, progressHandler: progressBlock, completion: completionBlock)
+  public func cloudImageDownload(progressHandler: @escaping (Double) -> Void, completion: @escaping (UIImage?) -> Void) -> PHImageRequestID? {
+    return SVPhotoLibrary.cloudImageDownload(asset: phAsset, progressHandler: progressHandler, completion: completion)
   }
   
-  public var originalFileName: String? {
-    get {
-      guard let resource = PHAssetResource.assetResources(for: phAsset).first else { return nil }
-      return resource.originalFilename
+  public var originalFileName: String {
+    return PHAssetResource.assetResources(for: phAsset).first!.originalFilename
+  }
+  
+  public func photoSize(options: PHImageRequestOptions? = nil, completion: @escaping (Int) -> Void, livePhotoVideoSize: Bool = false) {
+    guard self.type == .photo else {
+      completion(-1)
+      return
     }
-  }
-  
-  public func photoSize(options: PHImageRequestOptions? = nil ,completion: @escaping ((Int)->Void), livePhotoVideoSize: Bool = false) {
-    guard self.type == .photo else { completion(-1); return }
     var resource: PHAssetResource? = nil
-    if phAsset.mediaSubtypes.contains(.photoLive) == true, livePhotoVideoSize {
+    if phAsset.mediaSubtypes.contains(.photoLive), livePhotoVideoSize {
       resource = PHAssetResource.assetResources(for: phAsset).filter { $0.type == .pairedVideo }.first
-    }else {
+    } else {
       resource = PHAssetResource.assetResources(for: phAsset).filter { $0.type == .photo }.first
     }
     if let fileSize = resource?.value(forKey: "fileSize") as? Int {
       completion(fileSize)
-    }else {
-      PHImageManager.default().requestImageData(for: phAsset, options: nil) { (data, uti, orientation, info) in
+    } else {
+      PHImageManager.default().requestImageData(for: phAsset, options: nil) { data, uti, orientation, info in
         var fileSize = -1
         if let data = data {
           let bcf = ByteCountFormatter()
@@ -90,23 +88,30 @@ public struct SVAsset {
     }
   }
   
-  public func videoSize(options: PHVideoRequestOptions? = nil, completion: @escaping ((Int)->Void)) {
-    guard self.type == .video else {  completion(-1); return }
+  public func videoSize(options: PHVideoRequestOptions? = nil, completion: @escaping (Int) -> Void) {
+    guard self.type == .video else {
+      completion(-1)
+      return
+    }
     let resource = PHAssetResource.assetResources(for: phAsset).filter { $0.type == .video }.first
     if let fileSize = resource?.value(forKey: "fileSize") as? Int {
       completion(fileSize)
-    }else {
-      PHImageManager.default().requestAVAsset(forVideo: phAsset, options: options) { (avasset, audioMix, info) in
+    } else {
+      PHImageManager.default().requestAVAsset(forVideo: phAsset, options: options) { avasset, audioMix, info in
         func fileSize(_ url: URL?) -> Int? {
           do {
-            guard let fileSize = try url?.resourceValues(forKeys: [.fileSizeKey]).fileSize else { return nil }
+            guard let fileSize = try url?.resourceValues(forKeys: [.fileSizeKey]).fileSize else {
+              return nil
+            }
             return fileSize
-          }catch { return nil }
+          } catch {
+            return nil
+          }
         }
         var url: URL? = nil
         if let urlAsset = avasset as? AVURLAsset {
           url = urlAsset.url
-        }else if let sandboxKeys = info?["PHImageFileSandboxExtensionTokenKey"] as? String, let path = sandboxKeys.components(separatedBy: ";").last {
+        } else if let sandboxKeys = info?["PHImageFileSandboxExtensionTokenKey"] as? String, let path = sandboxKeys.components(separatedBy: ";").last {
           url = URL(fileURLWithPath: path)
         }
         let size = fileSize(url) ?? -1
@@ -118,13 +123,17 @@ public struct SVAsset {
   }
   
   func MIMEType(_ url: URL?) -> String? {
-    guard let ext = url?.pathExtension else { return nil }
+    guard let ext = url?.pathExtension else {
+      return nil
+    }
     if !ext.isEmpty {
       let UTIRef = UTTypeCreatePreferredIdentifierForTag("public.filename-extension" as CFString, ext as CFString, nil)
       let UTI = UTIRef?.takeUnretainedValue()
       UTIRef?.release()
       if let UTI = UTI {
-        guard let MIMETypeRef = UTTypeCopyPreferredTagWithClass(UTI, kUTTagClassMIMEType) else { return nil }
+        guard let MIMETypeRef = UTTypeCopyPreferredTagWithClass(UTI, kUTTagClassMIMEType) else {
+          return nil
+        }
         let MIMEType = MIMETypeRef.takeUnretainedValue()
         MIMETypeRef.release()
         return MIMEType as String
@@ -137,76 +146,83 @@ public struct SVAsset {
   //convertLivePhotosToPNG
   // false : If you want mov file at live photos
   // true  : If you want png file at live photos ( HEIC )
-  public func tempCopyMediaFile(videoRequestOptions: PHVideoRequestOptions? = nil, imageRequestOptions: PHImageRequestOptions? = nil, exportPreset: String = AVAssetExportPresetHighestQuality, convertLivePhotosToJPG: Bool = false, progressBlock:((Double) -> Void)? = nil, completionBlock:@escaping ((URL,String) -> Void)) -> PHImageRequestID? {
+  public func tempCopyMediaFile(videoRequestOptions: PHVideoRequestOptions? = nil, imageRequestOptions: PHImageRequestOptions? = nil, exportPreset: String = AVAssetExportPresetHighestQuality, convertLivePhotosToJPG: Bool = false, progressHandler: ((Double) -> Void)? = nil, completion: @escaping (URL, String) -> Void) -> PHImageRequestID? {
     var type: PHAssetResourceType? = nil
     if phAsset.mediaSubtypes.contains(.photoLive) == true, convertLivePhotosToJPG == false {
       type = .pairedVideo
-    }else {
+    } else {
       type = phAsset.mediaType == .video ? .video : .photo
     }
-    guard let resource = (PHAssetResource.assetResources(for: phAsset).filter{ $0.type == type }).first else { return nil }
-    let fileName = resource.originalFilename
-    var writeURL: URL? = nil
+    guard let resource = (PHAssetResource.assetResources(for: phAsset).filter{ $0.type == type }).first else {
+      return nil
+    }
+    var writeURL: URL
     if #available(iOS 10.0, *) {
-      writeURL = FileManager.default.temporaryDirectory.appendingPathComponent("\(fileName)")
+      writeURL = FileManager.default.temporaryDirectory.appendingPathComponent(resource.originalFilename)
     } else {
-      writeURL = URL(fileURLWithPath: NSTemporaryDirectory(), isDirectory: true).appendingPathComponent("\(fileName)")
+      writeURL = URL(fileURLWithPath: NSTemporaryDirectory(), isDirectory: true).appendingPathComponent(resource.originalFilename)
     }
-    if (writeURL?.pathExtension.uppercased() == "HEIC" || writeURL?.pathExtension.uppercased() == "HEIF") && convertLivePhotosToJPG {
-      if let fileName2 = writeURL?.deletingPathExtension().lastPathComponent {
-        writeURL?.deleteLastPathComponent()
-        writeURL?.appendPathComponent("\(fileName2).jpg")
-      }
+    if (writeURL.pathExtension.uppercased() == "HEIC" || writeURL.pathExtension.uppercased() == "HEIF") && convertLivePhotosToJPG {
+      let fileName2 = writeURL.deletingPathExtension().lastPathComponent
+      writeURL.deleteLastPathComponent()
+      writeURL.appendPathComponent(fileName2 + ".jpg")
     }
-    guard let localURL = writeURL,let mimetype = MIMEType(writeURL) else { return nil }
+    guard let mimetype = MIMEType(writeURL) else {
+      return nil
+    }
     switch phAsset.mediaType {
     case .video:
       var requestOptions = PHVideoRequestOptions()
       if let options = videoRequestOptions {
         requestOptions = options
-      }else {
+      } else {
         requestOptions.isNetworkAccessAllowed = true
       }
-      //iCloud download progress
-      requestOptions.progressHandler = { (progress, error, stop, info) in
-        DispatchQueue.main.async {
-          progressBlock?(progress)
+      // iCloud download progress
+      if let progressHandler = progressHandler {
+        requestOptions.progressHandler = { progress, error, stop, info in
+          DispatchQueue.main.async {
+            progressHandler(progress)
+          }
         }
       }
-      return PHImageManager.default().requestExportSession(forVideo: phAsset, options: requestOptions, exportPreset: exportPreset) { (session, infoDict) in
-        session?.outputURL = localURL
+      return PHImageManager.default().requestExportSession(forVideo: phAsset, options: requestOptions, exportPreset: exportPreset) { session, infoDict in
+        session?.outputURL = writeURL
         session?.outputFileType = AVFileType.mov
-        session?.exportAsynchronously(completionHandler: {
+        session?.exportAsynchronously {
           DispatchQueue.main.async {
-            completionBlock(localURL, mimetype)
+            completion(writeURL, mimetype)
           }
-        })
+        }
       }
     case .image:
       var requestOptions = PHImageRequestOptions()
       if let options = imageRequestOptions {
         requestOptions = options
-      }else {
+      } else {
         requestOptions.isNetworkAccessAllowed = true
       }
-      //iCloud download progress
-      requestOptions.progressHandler = { (progress, error, stop, info) in
-        DispatchQueue.main.async {
-          progressBlock?(progress)
+      // iCloud download progress
+      if let progressHandler = progressHandler {
+        requestOptions.progressHandler = { progress, error, stop, info in
+          DispatchQueue.main.async {
+            progressHandler(progress)
+          }
         }
       }
-      return PHImageManager.default().requestImageData(for: phAsset, options: requestOptions, resultHandler: { (data, uti, orientation, info) in
+      return PHImageManager.default().requestImageData(for: phAsset, options: requestOptions) { (data, uti, orientation, info) in
         do {
           var data = data
-          if convertLivePhotosToJPG == true, let imgData = data, let rawImage = UIImage(data: imgData)?.upOrientationImage() {
+          if convertLivePhotosToJPG, let imgData = data, let rawImage = UIImage(data: imgData)?.upOrientationImage() {
             data = UIImageJPEGRepresentation(rawImage, 1)
           }
-          try data?.write(to: localURL)
+          try data?.write(to: writeURL)
           DispatchQueue.main.async {
-            completionBlock(localURL, mimetype)
+            completion(writeURL, mimetype)
           }
-        }catch { }
-      })
+        } catch {
+        }
+      }
     default:
       return nil
     }
@@ -215,43 +231,53 @@ public struct SVAsset {
   //Apparently, this method is not be safety to export a video.
   //There is many way that export a video.
   //This method was one of them.
-  public func exportVideoFile(options: PHVideoRequestOptions? = nil, progressBlock:((Float) -> Void)? = nil, completionBlock:@escaping ((URL,String) -> Void)) {
-    guard phAsset.mediaType == .video else { return }
-    var type = PHAssetResourceType.video
-    guard let resource = (PHAssetResource.assetResources(for: phAsset).filter{ $0.type == type }).first else { return }
-    let fileName = resource.originalFilename
-    var writeURL: URL? = nil
-    if #available(iOS 10.0, *) {
-      writeURL = FileManager.default.temporaryDirectory.appendingPathComponent("\(fileName)")
-    } else {
-      writeURL = URL(fileURLWithPath: NSTemporaryDirectory(), isDirectory: true).appendingPathComponent("\(fileName)")
+  public func exportVideoFile(options: PHVideoRequestOptions? = nil, progressHandler: ((Float) -> Void)? = nil, completion: @escaping (URL, String) -> Void) {
+    guard phAsset.mediaType == .video else {
+      return
     }
-    guard let localURL = writeURL,let mimetype = MIMEType(writeURL) else { return }
+    var type = PHAssetResourceType.video
+    guard let resource = (PHAssetResource.assetResources(for: phAsset).filter{ $0.type == type }).first else {
+      return
+    }
+    let fileName = resource.originalFilename
+    let writeURL: URL
+    if #available(iOS 10.0, *) {
+      writeURL = FileManager.default.temporaryDirectory.appendingPathComponent(fileName)
+    } else {
+      writeURL = URL(fileURLWithPath: NSTemporaryDirectory(), isDirectory: true).appendingPathComponent(fileName)
+    }
+    guard let mimetype = MIMEType(writeURL) else {
+      return
+    }
     var requestOptions = PHVideoRequestOptions()
     if let options = options {
       requestOptions = options
-    }else {
+    } else {
       requestOptions.isNetworkAccessAllowed = true
     }
     //iCloud download progress
     //options.progressHandler = { (progress, error, stop, info) in
     
     //}
-    PHImageManager.default().requestAVAsset(forVideo: phAsset, options: options) { (avasset, avaudioMix, infoDict) in
-      guard let avasset = avasset else { return }
-      let exportSession = AVAssetExportSession.init(asset: avasset, presetName: AVAssetExportPresetHighestQuality)
-      exportSession?.outputURL = localURL
-      exportSession?.outputFileType = AVFileType.mov
-      exportSession?.exportAsynchronously(completionHandler: {
-        completionBlock(localURL,mimetype)
-      })
+    PHImageManager.default().requestAVAsset(forVideo: phAsset, options: options) { avasset, avaudioMix, infoDict in
+      guard let avasset = avasset else {
+        return
+      }
+      let exportSession = AVAssetExportSession(asset: avasset, presetName: AVAssetExportPresetHighestQuality)!
+      exportSession.outputURL = writeURL
+      exportSession.outputFileType = .mov
+      exportSession.exportAsynchronously {
+        completion(writeURL, mimetype)
+      }
       func checkExportSession() {
         DispatchQueue.global().async { [weak exportSession] in
-          guard let exportSession = exportSession else { return }
+          guard let exportSession = exportSession else {
+            return
+          }
           switch exportSession.status {
           case .waiting,.exporting:
             DispatchQueue.main.async {
-              progressBlock?(exportSession.progress)
+              progressHandler?(exportSession.progress)
             }
             Thread.sleep(forTimeInterval: 1)
             checkExportSession()
@@ -270,7 +296,24 @@ public struct SVAsset {
 }
 
 extension SVAsset: Equatable {
+  
   public static func ==(lhs: SVAsset, rhs: SVAsset) -> Bool {
     return lhs.phAsset.localIdentifier == rhs.phAsset.localIdentifier
+  }
+}
+
+extension UIImage {
+  
+  func upOrientationImage() -> UIImage? {
+    switch imageOrientation {
+    case .up:
+      return self
+    default:
+      UIGraphicsBeginImageContextWithOptions(size, false, scale)
+      draw(in: CGRect(origin: .zero, size: size))
+      let result = UIGraphicsGetImageFromCurrentImageContext()
+      UIGraphicsEndImageContext()
+      return result
+    }
   }
 }

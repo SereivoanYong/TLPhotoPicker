@@ -39,7 +39,7 @@ public protocol TLPhotosPickerLogDelegate: class {
   func selectedCameraCell(picker: TLPhotosPickerViewController)
   func deselectedPhoto(picker: TLPhotosPickerViewController, at: Int)
   func selectedPhoto(picker: TLPhotosPickerViewController, at: Int)
-  func selectedAlbum(picker: TLPhotosPickerViewController, title: String, at: Int)
+  func selectedAlbum(picker: TLPhotosPickerViewController, title: String?, at: Int)
 }
 
 extension TLPhotosPickerLogDelegate {

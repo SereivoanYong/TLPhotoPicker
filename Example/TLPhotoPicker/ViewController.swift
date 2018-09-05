@@ -93,7 +93,7 @@ class ViewController: UIViewController,TLPhotosPickerViewControllerDelegate {
     
     func exportVideo() {
         if let asset = self.selectedAssets.first, asset.type == .video {
-            asset.exportVideoFile(progressBlock: { (progress) in
+            asset.exportVideoFile(progressHandler: { (progress) in
                 print(progress)
             }) { (url, mimeType) in
                 print("completion\(url)")
@@ -104,9 +104,9 @@ class ViewController: UIViewController,TLPhotosPickerViewControllerDelegate {
     
     func getAsyncCopyTemporaryFile() {
         if let asset = self.selectedAssets.first {
-            asset.tempCopyMediaFile(convertLivePhotosToJPG: false, progressBlock: { (progress) in
+            asset.tempCopyMediaFile(convertLivePhotosToJPG: false, progressHandler: { (progress) in
                 print(progress)
-            }, completionBlock: { (url, mimeType) in
+            }, completion: { (url, mimeType) in
                 print("completion\(url)")
                 print(mimeType)
             })
@@ -127,12 +127,12 @@ class ViewController: UIViewController,TLPhotosPickerViewControllerDelegate {
                 self.imageView.image = image
             }else {
                 print("Can't get image at local storage, try download image")
-                asset.cloudImageDownload(progressBlock: { [weak self] (progress) in
+                asset.cloudImageDownload(progressHandler: { [weak self] (progress) in
                     DispatchQueue.main.async {
                         self?.label.text = "download \(100*progress)%"
                         print(progress)
                     }
-                }, completionBlock: { [weak self] (image) in
+                }, completion: { [weak self] (image) in
                     if let image = image {
                         //use image
                         DispatchQueue.main.async {
@@ -202,7 +202,7 @@ extension ViewController: TLPhotosPickerLogDelegate {
         print("deselectedPhoto")
     }
     
-    func selectedAlbum(picker: TLPhotosPickerViewController, title: String, at: Int) {
+    func selectedAlbum(picker: TLPhotosPickerViewController, title: String?, at: Int) {
         print("selectedAlbum")
     }
 }
