@@ -268,7 +268,7 @@ public struct SVAsset {
     }
   }
   
-  init(asset: PHAsset?) {
+  init(with asset: PHAsset?) {
     self.phAsset = asset
   }
 }
@@ -281,7 +281,7 @@ extension SVAsset: Equatable {
 }
 
 struct SVAssetCollection {
-  var phAssetCollection: PHAssetCollection? = nil
+  var phAssetCollection: PHAssetCollection?
   var fetchResult: PHFetchResult<PHAsset>? = nil
   var useCameraButton: Bool = false
   var recentPosition: CGPoint = CGPoint.zero
@@ -294,10 +294,10 @@ struct SVAssetCollection {
     }
   }
   
-  init(collection: PHAssetCollection) {
-    self.phAssetCollection = collection
-    self.title = collection.localizedTitle ?? ""
-    self.localIdentifier = collection.localIdentifier
+  init(with phAssetCollection: PHAssetCollection) {
+    self.phAssetCollection = phAssetCollection
+    self.title = phAssetCollection.localizedTitle ?? ""
+    self.localIdentifier = phAssetCollection.localIdentifier
   }
   
   func getAsset(at index: Int) -> PHAsset? {
@@ -311,7 +311,7 @@ struct SVAssetCollection {
     if self.useCameraButton && index == 0 { return nil }
     let index = index - (self.useCameraButton ? 1 : 0)
     guard let result = self.fetchResult, index < result.count else { return nil }
-    return SVAsset(asset: result.object(at: max(index,0)))
+    return SVAsset(with: result.object(at: max(index,0)))
   }
   
   func getAssets(at range: CountableClosedRange<Int>) -> [PHAsset]? {

@@ -523,7 +523,7 @@ extension TLPhotosPickerViewController: UIImagePickerControllerDelegate, UINavig
       }, completionHandler: { [weak self] (sucess, error) in
         if sucess, let `self` = self, let identifier = placeholderAsset?.localIdentifier {
           guard let asset = PHAsset.fetchAssets(withLocalIdentifiers: [identifier], options: nil).firstObject else { return }
-          var result = SVAsset(asset: asset)
+          var result = SVAsset(with: asset)
           result.selectedOrder = self.selectedAssets.count + 1
           self.selectedAssets.append(result)
           self.logDelegate?.selectedPhoto(picker: self, at: 1)
@@ -538,7 +538,7 @@ extension TLPhotosPickerViewController: UIImagePickerControllerDelegate, UINavig
       }) { [weak self] (sucess, error) in
         if sucess, let `self` = self, let identifier = placeholderAsset?.localIdentifier {
           guard let asset = PHAsset.fetchAssets(withLocalIdentifiers: [identifier], options: nil).firstObject else { return }
-          var result = SVAsset(asset: asset)
+          var result = SVAsset(with: asset)
           result.selectedOrder = self.selectedAssets.count + 1
           self.selectedAssets.append(result)
           self.logDelegate?.selectedPhoto(picker: self, at: 1)

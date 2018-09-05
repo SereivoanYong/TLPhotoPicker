@@ -170,7 +170,7 @@ extension TLPhotoLibrary {
       }
       for collection in collections {
         if !result.contains(where: { $0.localIdentifier == collection.localIdentifier }) {
-          var assetsCollection = SVAssetCollection(collection: collection)
+          var assetsCollection = SVAssetCollection(with: collection)
           assetsCollection.fetchResult = PHAsset.fetchAssets(in: collection, options: options)
           if assetsCollection.count > 0 {
             result.append(assetsCollection)
@@ -183,7 +183,7 @@ extension TLPhotoLibrary {
     func getSmartAlbum(subType: PHAssetCollectionSubtype, useCameraButton: Bool = false, result: inout [SVAssetCollection]) -> SVAssetCollection? {
       let fetchCollection = PHAssetCollection.fetchAssetCollections(with: .smartAlbum, subtype: subType, options: nil)
       if let collection = fetchCollection.firstObject, !result.contains(where: { $0.localIdentifier == collection.localIdentifier }) {
-        var assetsCollection = SVAssetCollection(collection: collection)
+        var assetsCollection = SVAssetCollection(with: collection)
         assetsCollection.fetchResult = PHAsset.fetchAssets(in: collection, options: options)
         if assetsCollection.count > 0 || useCameraButton {
           result.append(assetsCollection)
@@ -223,7 +223,7 @@ extension TLPhotoLibrary {
       let albumsResult = PHCollectionList.fetchTopLevelUserCollections(with: nil)
       albumsResult.enumerateObjects({ (collection, index, stop) -> Void in
         guard let collection = collection as? PHAssetCollection else { return }
-        var assetsCollection = SVAssetCollection(collection: collection)
+        var assetsCollection = SVAssetCollection(with: collection)
         assetsCollection.fetchResult = PHAsset.fetchAssets(in: collection, options: options)
         if assetsCollection.count > 0, !assetCollections.contains(where: { $0.localIdentifier == collection.localIdentifier }) {
           assetCollections.append(assetsCollection)
