@@ -282,7 +282,7 @@ struct SVAssetCollection {
   var useCameraButton: Bool = false
   var recentPosition: CGPoint = CGPoint.zero
   var title: String
-  var localIdentifier: String
+  
   var count: Int {
     get {
       guard let count = self.fetchResult?.count, count > 0 else { return self.useCameraButton ? 1 : 0 }
@@ -293,7 +293,6 @@ struct SVAssetCollection {
   init(with phAssetCollection: PHAssetCollection) {
     self.phAssetCollection = phAssetCollection
     self.title = phAssetCollection.localizedTitle ?? ""
-    self.localIdentifier = phAssetCollection.localIdentifier
   }
   
   func getAsset(at index: Int) -> PHAsset? {
@@ -317,7 +316,7 @@ struct SVAssetCollection {
   }
   
   static func ==(lhs: SVAssetCollection, rhs: SVAssetCollection) -> Bool {
-    return lhs.localIdentifier == rhs.localIdentifier
+    return lhs.phAssetCollection.localIdentifier == rhs.phAssetCollection.localIdentifier
   }
 }
 
