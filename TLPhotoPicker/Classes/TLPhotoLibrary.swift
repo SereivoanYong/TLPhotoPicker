@@ -10,9 +10,9 @@ import Foundation
 import Photos
 
 protocol TLPhotoLibraryDelegate: class {
-  func loadCameraRollCollection(collection: TLAssetsCollection)
-  func loadCompleteAllCollection(collections: [TLAssetsCollection])
-  func focusCollection(collection: TLAssetsCollection)
+  func loadCameraRollCollection(collection: SVAssetCollection)
+  func loadCompleteAllCollection(collections: [SVAssetCollection])
+  func focusCollection(collection: SVAssetCollection)
 }
 
 class TLPhotoLibrary {
@@ -149,7 +149,7 @@ extension TLPhotoLibrary {
     return options
   }
   
-  func fetchResult(collection: TLAssetsCollection?, configure: TLPhotosPickerConfigure) -> PHFetchResult<PHAsset>? {
+  func fetchResult(collection: SVAssetCollection?, configure: TLPhotosPickerConfigure) -> PHFetchResult<PHAsset>? {
     guard let phAssetCollection = collection?.phAssetCollection else { return nil }
     let options = getOption(configure: configure)
     return PHAsset.fetchAssets(in: phAssetCollection, options: options)
@@ -159,7 +159,7 @@ extension TLPhotoLibrary {
     let useCameraButton = configure.usedCameraButton
     let options = getOption(configure: configure)
     
-    func getAlbum(subType: PHAssetCollectionSubtype, result: inout [TLAssetsCollection]) {
+    func getAlbum(subType: PHAssetCollectionSubtype, result: inout [SVAssetCollection]) {
       let fetchCollection = PHAssetCollection.fetchAssetCollections(with: .album, subtype: subType, options: nil)
       var collections = [PHAssetCollection]()
       fetchCollection.enumerateObjects { (collection, index, _) in 
@@ -170,7 +170,7 @@ extension TLPhotoLibrary {
       }
       for collection in collections {
         if !result.contains(where: { $0.localIdentifier == collection.localIdentifier }) {
-          var assetsCollection = TLAssetsCollection(collection: collection)
+          var assetsCollection = SVAssetCollection(collection: collection)
           assetsCollection.fetchResult = PHAsset.fetchAssets(in: collection, options: options)
           if assetsCollection.count > 0 {
             result.append(assetsCollection)
@@ -180,10 +180,10 @@ extension TLPhotoLibrary {
     }
     
     @discardableResult
-    func getSmartAlbum(subType: PHAssetCollectionSubtype, useCameraButton: Bool = false, result: inout [TLAssetsCollection]) -> TLAssetsCollection? {
+    func getSmartAlbum(subType: PHAssetCollectionSubtype, useCameraButton: Bool = false, result: inout [SVAssetCollection]) -> SVAssetCollection? {
       let fetchCollection = PHAssetCollection.fetchAssetCollections(with: .smartAlbum, subtype: subType, options: nil)
       if let collection = fetchCollection.firstObject, !result.contains(where: { $0.localIdentifier == collection.localIdentifier }) {
-        var assetsCollection = TLAssetsCollection(collection: collection)
+        var assetsCollection = SVAssetCollection(collection: collection)
         assetsCollection.fetchResult = PHAsset.fetchAssets(in: collection, options: options)
         if assetsCollection.count > 0 || useCameraButton {
           result.append(assetsCollection)
@@ -194,7 +194,7 @@ extension TLPhotoLibrary {
     }
     
     DispatchQueue.global(qos: .userInteractive).async { [weak self] in
-      var assetCollections = [TLAssetsCollection]()
+      var assetCollections = [SVAssetCollection]()
       //Camera Roll
       let camerarollCollection = getSmartAlbum(subType: .smartAlbumUserLibrary, useCameraButton: useCameraButton, result: &assetCollections)
       if var cameraRoll = camerarollCollection {
@@ -223,7 +223,7 @@ extension TLPhotoLibrary {
       let albumsResult = PHCollectionList.fetchTopLevelUserCollections(with: nil)
       albumsResult.enumerateObjects({ (collection, index, stop) -> Void in
         guard let collection = collection as? PHAssetCollection else { return }
-        var assetsCollection = TLAssetsCollection(collection: collection)
+        var assetsCollection = SVAssetCollection(collection: collection)
         assetsCollection.fetchResult = PHAsset.fetchAssets(in: collection, options: options)
         if assetsCollection.count > 0, !assetCollections.contains(where: { $0.localIdentifier == collection.localIdentifier }) {
           assetCollections.append(assetsCollection)

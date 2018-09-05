@@ -46,7 +46,7 @@ extension TLPhotosPickerLogDelegate {
   func selectedCameraCell(picker: TLPhotosPickerViewController) { }
   func deselectedPhoto(picker: TLPhotosPickerViewController, at: Int) { }
   func selectedPhoto(picker: TLPhotosPickerViewController, at: Int) { }
-  func selectedAlbum(picker: TLPhotosPickerViewController, collections: [TLAssetsCollection], at: Int) { }
+  func selectedAlbum(picker: TLPhotosPickerViewController, collections: [SVAssetCollection], at: Int) { }
 }
 
 
@@ -152,8 +152,8 @@ open class TLPhotosPickerViewController: UIViewController {
   fileprivate var completionWithTLPHAssets: (([SVAsset]) -> Void)? = nil
   fileprivate var didCancel: (() -> Void)? = nil
   
-  fileprivate var collections = [TLAssetsCollection]()
-  fileprivate var focusedCollection: TLAssetsCollection? = nil
+  fileprivate var collections = [SVAssetCollection]()
+  fileprivate var focusedCollection: SVAssetCollection? = nil
   fileprivate var requestIds = [IndexPath:PHImageRequestID]()
   fileprivate var playRequestId: (indexPath: IndexPath, requestId: PHImageRequestID)? = nil
   fileprivate var photoLibrary = TLPhotoLibrary()
@@ -345,7 +345,7 @@ extension TLPhotosPickerViewController {
     return result
   }
   
-  fileprivate func focused(collection: TLAssetsCollection) {
+  fileprivate func focused(collection: SVAssetCollection) {
     func resetRequest() {
       cancelAllImageAssets()
     }
@@ -434,7 +434,7 @@ extension TLPhotosPickerViewController {
 
 // MARK: - TLPhotoLibraryDelegate
 extension TLPhotosPickerViewController: TLPhotoLibraryDelegate {
-  func loadCameraRollCollection(collection: TLAssetsCollection) {
+  func loadCameraRollCollection(collection: SVAssetCollection) {
     if let focused = self.focusedCollection, focused == collection {
       focusCollection(collection: collection)
     }
@@ -444,7 +444,7 @@ extension TLPhotosPickerViewController: TLPhotoLibraryDelegate {
     self.reloadTableView()
   }
   
-  func loadCompleteAllCollection(collections: [TLAssetsCollection]) {
+  func loadCompleteAllCollection(collections: [SVAssetCollection]) {
     self.collections = collections
     let isEmpty = self.collections.count == 0
     self.subTitleStackView.isHidden = isEmpty
@@ -455,7 +455,7 @@ extension TLPhotosPickerViewController: TLPhotoLibraryDelegate {
     self.registerChangeObserver()
   }
   
-  func focusCollection(collection: TLAssetsCollection) {
+  func focusCollection(collection: SVAssetCollection) {
     self.focusedCollection = collection
     self.updateTitle()
   }

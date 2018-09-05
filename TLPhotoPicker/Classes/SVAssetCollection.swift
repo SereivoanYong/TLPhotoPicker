@@ -280,7 +280,7 @@ extension SVAsset: Equatable {
   }
 }
 
-struct TLAssetsCollection {
+struct SVAssetCollection {
   var phAssetCollection: PHAssetCollection? = nil
   var fetchResult: PHFetchResult<PHAsset>? = nil
   var useCameraButton: Bool = false
@@ -320,7 +320,7 @@ struct TLAssetsCollection {
     return self.fetchResult?.objects(at: IndexSet(integersIn: max(lowerBound,0)...min(upperBound,count)))
   }
   
-  static func ==(lhs: TLAssetsCollection, rhs: TLAssetsCollection) -> Bool {
+  static func ==(lhs: SVAssetCollection, rhs: SVAssetCollection) -> Bool {
     return lhs.localIdentifier == rhs.localIdentifier
   }
 }
