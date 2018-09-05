@@ -27,18 +27,4 @@ class ImagePreviewViewController: UIViewController {
         super.viewDidLoad()
         self.imageView.image = self.assets?.fullResolutionImage
     }
-    
-    override func viewWillAppear(_ animated: Bool) {
-        super.viewWillAppear(animated)
-        self.navigationController?.setNavigationBarHidden(false, animated: true)
-    }
-    
-    override func viewWillDisappear(_ animated: Bool) {
-        super.viewWillDisappear(animated)
-        if self.navigationController?.topViewController is ImagePreviewViewController {
-            self.navigationController?.setNavigationBarHidden(false, animated: true)
-        }else {
-            self.navigationController?.setNavigationBarHidden(true, animated: true)
-        }
-    }
 }

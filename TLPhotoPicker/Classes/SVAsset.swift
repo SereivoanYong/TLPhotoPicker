@@ -13,21 +13,24 @@ import MobileCoreServices
 
 public struct SVAsset {
   
-  enum CloudDownloadState {
+  public enum CloudDownloadState {
+    
     case ready, progress, complete, failed
   }
   
   public enum AssetType {
+    
     case photo, video, livePhoto
   }
   
   public enum ImageExtType: String {
+    
     case png, jpg, gif, heic
   }
   
-  var state = CloudDownloadState.ready
+  public var state = CloudDownloadState.ready
   public let phAsset: PHAsset
-  public var selectedOrder: Int = 0
+  var selectedOrder: Int = 0
   public var type: AssetType {
     switch phAsset.mediaType {
     case .image:
@@ -77,8 +80,6 @@ public struct SVAsset {
       PHImageManager.default().requestImageData(for: phAsset, options: nil) { data, uti, orientation, info in
         var fileSize = -1
         if let data = data {
-          let bcf = ByteCountFormatter()
-          bcf.countStyle = .file
           fileSize = data.count
         }
         DispatchQueue.main.async {
@@ -122,7 +123,7 @@ public struct SVAsset {
     }
   }
   
-  func MIMEType(_ url: URL?) -> String? {
+  public func MIMEType(_ url: URL?) -> String? {
     guard let ext = url?.pathExtension else {
       return nil
     }

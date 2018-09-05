@@ -11,9 +11,9 @@ import Photos
 import PhotosUI
 import MobileCoreServices
 
-public protocol TLPhotosPickerViewControllerDelegate: class {
-  func dismissPhotoPicker(withPHAssets: [PHAsset])
-  func dismissPhotoPicker(withTLPHAssets: [SVAsset])
+public protocol TLPhotosPickerViewControllerDelegate: AnyObject {
+  
+  func dismissPhotoPicker(withPHAssets: [SVAsset])
   func dismissComplete()
   func photoPickerDidCancel()
   func canSelectAsset(phAsset: PHAsset) -> Bool
@@ -23,9 +23,9 @@ public protocol TLPhotosPickerViewControllerDelegate: class {
 }
 
 extension TLPhotosPickerViewControllerDelegate {
+  
   public func deninedAuthoization() { }
   public func dismissPhotoPicker(withPHAssets: [PHAsset]) { }
-  public func dismissPhotoPicker(withTLPHAssets: [SVAsset]) { }
   public func dismissComplete() { }
   public func photoPickerDidCancel() { }
   public func canSelectAsset(phAsset: PHAsset) -> Bool { return true }
@@ -34,23 +34,8 @@ extension TLPhotosPickerViewControllerDelegate {
   public func handleNoCameraPermissions(picker: TLPhotosPickerViewController) { }
 }
 
-//for log
-public protocol TLPhotosPickerLogDelegate: class {
-  func selectedCameraCell(picker: TLPhotosPickerViewController)
-  func deselectedPhoto(picker: TLPhotosPickerViewController, at: Int)
-  func selectedPhoto(picker: TLPhotosPickerViewController, at: Int)
-  func selectedAlbum(picker: TLPhotosPickerViewController, title: String?, at: Int)
-}
-
-extension TLPhotosPickerLogDelegate {
-  func selectedCameraCell(picker: TLPhotosPickerViewController) { }
-  func deselectedPhoto(picker: TLPhotosPickerViewController, at: Int) { }
-  func selectedPhoto(picker: TLPhotosPickerViewController, at: Int) { }
-  func selectedAlbum(picker: TLPhotosPickerViewController, collections: [SVAssetCollection], at: Int) { }
-}
-
-
-public struct TLPhotosPickerConfigure {
+public struct SVPhotosPickerConfiguration {
+  
   public var defaultCameraRollTitle = "Camera Roll"
   public var tapHereToChange = "Tap here to change"
   public var cancelTitle = "Cancel"
@@ -64,121 +49,85 @@ public struct TLPhotosPickerConfigure {
   public var allowedAlbumCloudShared = false
   public var allowedVideoRecording = true
   public var recordingVideoQuality: UIImagePickerControllerQualityType = .typeMedium
-  public var maxVideoDuration:TimeInterval? = nil
+  public var maxVideoDuration: TimeInterval?
   public var autoPlay = true
   public var muteAudio = true
-  public var mediaType: PHAssetMediaType? = nil
+  public var mediaType: PHAssetMediaType?
   public var numberOfColumn = 3
   public var singleSelectedMode = false
   public var maxSelectedAssets: Int? = nil
-  public var fetchOption: PHFetchOptions? = nil
-  public var selectedColor = UIColor(red: 88/255, green: 144/255, blue: 255/255, alpha: 1.0)
+  public var fetchOption: PHFetchOptions?
+  public var selectedColor = UIColor(red: 88/255, green: 144/255, blue: 255/255, alpha: 1)
   public var cameraBgColor = UIColor(red: 221/255, green: 223/255, blue: 226/255, alpha: 1)
   public var cameraIcon = TLBundle.podBundleImage(named: "camera")
   public var videoIcon = TLBundle.podBundleImage(named: "video")
   public var placeholderIcon = TLBundle.podBundleImage(named: "insertPhotoMaterial")
-  public var nibSet: (nibName: String, bundle:Bundle)? = nil
-  public var cameraCellNibSet: (nibName: String, bundle:Bundle)? = nil
+  public var nibSet: (nibName: String, bundle:Bundle)?
+  public var cameraCellNibSet: (nibName: String, bundle:Bundle)?
+  
   public init() {
     
   }
 }
-
 
 public struct Platform {
   
   public static var isSimulator: Bool {
     return TARGET_OS_SIMULATOR != 0 // Use this line in Xcode 7 or newer
   }
-  
 }
 
-
 open class TLPhotosPickerViewController: UIViewController {
+  
+  lazy open var cancelBarButtonItem: UIBarButtonItem = UIBarButtonItem(barButtonSystemItem: .cancel, target: self, action: #selector(cancel(_:)))
+  lazy open var doneBarButtonItem: UIBarButtonItem = UIBarButtonItem(barButtonSystemItem: .done, target: self, action: #selector(done(_:)))
+  
   @IBOutlet open var titleView: UIView!
   @IBOutlet open var titleLabel: UILabel!
   @IBOutlet open var subTitleStackView: UIStackView!
   @IBOutlet open var subTitleLabel: UILabel!
   @IBOutlet open var subTitleArrowImageView: UIImageView!
-  @IBOutlet open var albumPopView: TLAlbumPopView!
+  @IBOutlet var albumPopView: TLAlbumPopView!
   @IBOutlet open var collectionView: UICollectionView!
   @IBOutlet open var indicator: UIActivityIndicatorView!
   @IBOutlet open var popArrowImageView: UIImageView!
-  @IBOutlet open var customNavItem: UINavigationItem!
-  @IBOutlet open var doneButton: UIBarButtonItem!
-  @IBOutlet open var cancelButton: UIBarButtonItem!
-  @IBOutlet open var navigationBarTopConstraint: NSLayoutConstraint!
   @IBOutlet open var emptyView: UIView!
   @IBOutlet open var emptyImageView: UIImageView!
   @IBOutlet open var emptyMessageLabel: UILabel!
   
-  public weak var delegate: TLPhotosPickerViewControllerDelegate? = nil
-  public weak var logDelegate: TLPhotosPickerLogDelegate? = nil
-  public var selectedAssets = [SVAsset]()
-  public var configure = TLPhotosPickerConfigure()
+  weak open var delegate: TLPhotosPickerViewControllerDelegate?
+  open var selectedAssets: [SVAsset] = []
+  public var configuration: SVPhotosPickerConfiguration = SVPhotosPickerConfiguration()
   
-  fileprivate var usedCameraButton: Bool {
-    get {
-      return self.configure.usedCameraButton
-    }
-  }
-  fileprivate var allowedVideo: Bool {
-    get {
-      return self.configure.allowedVideo
-    }
-  }
-  fileprivate var usedPrefetch: Bool {
-    get {
-      return self.configure.usedPrefetch
-    }
-    set {
-      self.configure.usedPrefetch = newValue
-    }
-  }
-  fileprivate var allowedLivePhotos: Bool {
-    get {
-      return self.configure.allowedLivePhotos
-    }
-    set {
-      self.configure.allowedLivePhotos = newValue
-    }
-  }
-  @objc open var canSelectAsset: ((PHAsset) -> Bool)? = nil
-  @objc open var didExceedMaximumNumberOfSelection: ((TLPhotosPickerViewController) -> Void)? = nil
-  @objc open var handleNoAlbumPermissions: ((TLPhotosPickerViewController) -> Void)? = nil
-  @objc open var handleNoCameraPermissions: ((TLPhotosPickerViewController) -> Void)? = nil
-  @objc open var dismissCompletion: (() -> Void)? = nil
-  fileprivate var completionWithPHAssets: (([PHAsset]) -> Void)? = nil
-  fileprivate var completionWithTLPHAssets: (([SVAsset]) -> Void)? = nil
-  fileprivate var didCancel: (() -> Void)? = nil
+  @objc open var canSelectAsset: ((PHAsset) -> Bool)?
+  @objc open var didExceedMaximumNumberOfSelection: ((TLPhotosPickerViewController) -> Void)?
+  @objc open var handleNoAlbumPermissions: ((TLPhotosPickerViewController) -> Void)?
+  @objc open var handleNoCameraPermissions: ((TLPhotosPickerViewController) -> Void)?
+  @objc open var dismissCompletion: (() -> Void)?
+  fileprivate var completionWithTLPHAssets: (([SVAsset]) -> Void)?
+  fileprivate var didCancel: (() -> Void)?
   
   fileprivate var collections = [SVAssetCollection]()
-  fileprivate var focusedCollection: SVAssetCollection? = nil
-  fileprivate var requestIds = [IndexPath:PHImageRequestID]()
-  fileprivate var playRequestId: (indexPath: IndexPath, requestId: PHImageRequestID)? = nil
+  fileprivate var focusedCollection: SVAssetCollection?
+  fileprivate var requestIds: [IndexPath: PHImageRequestID] = [:]
+  fileprivate var playRequestId: (indexPath: IndexPath, requestId: PHImageRequestID)?
   fileprivate var photoLibrary = SVPhotoLibrary()
   fileprivate var queue = DispatchQueue(label: "tilltue.photos.pikcker.queue")
   fileprivate var thumbnailSize = CGSize.zero
-  fileprivate var placeholderThumbnail: UIImage? = nil
-  fileprivate var cameraImage: UIImage? = nil
+  fileprivate var placeholderThumbnail: UIImage?
+  fileprivate var cameraImage: UIImage?
   
   deinit {
     //print("deinit TLPhotosPickerViewController")
     PHPhotoLibrary.shared().unregisterChangeObserver(self)
   }
   
-  required public init?(coder aDecoder: NSCoder) {
+  public required init?(coder aDecoder: NSCoder) {
     fatalError("init(coder:) has not been implemented")
   }
   
   public init() {
     super.init(nibName: "TLPhotosPickerViewController", bundle: Bundle(for: TLPhotosPickerViewController.self))
-  }
-  
-  @objc convenience public init(withPHAssets: (([PHAsset]) -> Void)? = nil, didCancel: (() -> Void)? = nil) {
-    self.init()
-    self.completionWithPHAssets = withPHAssets
-    self.didCancel = didCancel
   }
   
   convenience public init(withTLPHAssets: (([SVAsset]) -> Void)? = nil, didCancel: (() -> Void)? = nil) {
@@ -187,11 +136,11 @@ open class TLPhotosPickerViewController: UIViewController {
     self.didCancel = didCancel
   }
   
-  override open var supportedInterfaceOrientations: UIInterfaceOrientationMask {
-    return UIInterfaceOrientationMask.portrait
+  open override var supportedInterfaceOrientations: UIInterfaceOrientationMask {
+    return .portrait
   }
   
-  override open func didReceiveMemoryWarning() {
+  open override func didReceiveMemoryWarning() {
     super.didReceiveMemoryWarning()
     self.stopPlay()
   }
@@ -209,31 +158,29 @@ open class TLPhotosPickerViewController: UIViewController {
       }
     case .authorized:
       self.initPhotoLibrary()
-    case .restricted: fallthrough
-    case .denied:
+    case .restricted, .denied:
       handleDeniedAlbumsAuthorization()
     }
   }
   
-  override open func viewDidLoad() {
+  open override func viewDidLoad() {
     super.viewDidLoad()
+    
     makeUI()
     checkAuthorization()
   }
   
-  override open func viewDidLayoutSubviews() {
+  open override func viewDidLayoutSubviews() {
     super.viewDidLayoutSubviews()
+    
     if self.thumbnailSize == CGSize.zero {
       initItemSize()
     }
-    if #available(iOS 11.0, *) {
-    } else if self.navigationBarTopConstraint.constant == 0 {
-      self.navigationBarTopConstraint.constant = 20
-    }
   }
   
-  override open func viewWillAppear(_ animated: Bool) {
+  open override func viewWillAppear(_ animated: Bool) {
     super.viewWillAppear(animated)
+    
     if self.photoLibrary.delegate == nil {
       initPhotoLibrary()
     }
@@ -260,48 +207,52 @@ extension TLPhotosPickerViewController {
   
   fileprivate func initItemSize() {
     guard let layout = self.collectionView.collectionViewLayout as? UICollectionViewFlowLayout else { return }
-    let count = CGFloat(self.configure.numberOfColumn)
+    let count = CGFloat(configuration.numberOfColumn)
     let width = (self.view.frame.size.width-(5*(count-1)))/count
     self.thumbnailSize = CGSize(width: width, height: width)
     layout.itemSize = self.thumbnailSize
     self.collectionView.collectionViewLayout = layout
-    self.placeholderThumbnail = centerAtRect(image: self.configure.placeholderIcon, rect: CGRect(x: 0, y: 0, width: width, height: width))
-    self.cameraImage = centerAtRect(image: self.configure.cameraIcon, rect: CGRect(x: 0, y: 0, width: width, height: width), bgColor: self.configure.cameraBgColor)
+    self.placeholderThumbnail = centerAtRect(image: configuration.placeholderIcon, rect: CGRect(x: 0, y: 0, width: width, height: width))
+    self.cameraImage = centerAtRect(image: configuration.cameraIcon, rect: CGRect(x: 0, y: 0, width: width, height: width), bgColor: self.configuration.cameraBgColor)
   }
   
   @objc open func makeUI() {
     registerNib(nibName: "TLPhotoCollectionViewCell", bundle: Bundle(for: TLPhotoCollectionViewCell.self))
-    if let nibSet = self.configure.nibSet {
+    if let nibSet = configuration.nibSet {
       registerNib(nibName: nibSet.nibName, bundle: nibSet.bundle)
     }
-    if let nibSet = self.configure.cameraCellNibSet {
+    if let nibSet = configuration.cameraCellNibSet {
       registerNib(nibName: nibSet.nibName, bundle: nibSet.bundle)
     }
     self.indicator.startAnimating()
     let tapGesture = UITapGestureRecognizer(target: self, action: #selector(titleTap))
     self.titleView.addGestureRecognizer(tapGesture)
-    self.titleLabel.text = self.configure.defaultCameraRollTitle
-    self.subTitleLabel.text = self.configure.tapHereToChange
-    self.cancelButton.title = self.configure.cancelTitle
-    self.doneButton.title = self.configure.doneTitle
-    self.doneButton.setTitleTextAttributes([NSAttributedStringKey.font: UIFont.boldSystemFont(ofSize: UIFont.labelFontSize)], for: .normal)
+    self.titleLabel.text = configuration.defaultCameraRollTitle
+    self.subTitleLabel.text = configuration.tapHereToChange
+    self.cancelBarButtonItem.title = configuration.cancelTitle
+    self.doneBarButtonItem.title = configuration.doneTitle
+    self.doneBarButtonItem.setTitleTextAttributes([.font: UIFont.boldSystemFont(ofSize: UIFont.labelFontSize)], for: .normal)
     self.emptyView.isHidden = true
-    self.emptyImageView.image = self.configure.emptyImage
-    self.emptyMessageLabel.text = self.configure.emptyMessage
+    self.emptyImageView.image = configuration.emptyImage
+    self.emptyMessageLabel.text = configuration.emptyMessage
     self.albumPopView.tableView.delegate = self
     self.albumPopView.tableView.dataSource = self
-    self.popArrowImageView.image = TLBundle.podBundleImage(named: "pop_arrow")
-    self.subTitleArrowImageView.image = TLBundle.podBundleImage(named: "arrow")
-    if #available(iOS 10.0, *), self.usedPrefetch {
-      self.collectionView.isPrefetchingEnabled = true
-      self.collectionView.prefetchDataSource = self
+    popArrowImageView.image = TLBundle.podBundleImage(named: "pop_arrow")
+    subTitleArrowImageView.image = TLBundle.podBundleImage(named: "arrow")
+    if #available(iOS 10.0, *), configuration.usedPrefetch {
+      collectionView.isPrefetchingEnabled = true
+      collectionView.prefetchDataSource = self
     } else {
-      self.usedPrefetch = false
+      configuration.usedPrefetch = false
     }
-    if #available(iOS 9.0, *), self.allowedLivePhotos {
-    }else {
-      self.allowedLivePhotos = false
+    if #available(iOS 9.0, *), configuration.allowedLivePhotos {
+    } else {
+      configuration.allowedLivePhotos = false
     }
+    
+    navigationItem.titleView = titleView
+    navigationItem.leftBarButtonItem = cancelBarButtonItem
+    navigationItem.rightBarButtonItem = doneBarButtonItem
   }
   
   fileprivate func updateTitle() {
@@ -329,9 +280,9 @@ extension TLPhotosPickerViewController {
   
   fileprivate func initPhotoLibrary() {
     if PHPhotoLibrary.authorizationStatus() == .authorized {
-      self.photoLibrary.delegate = self
-      self.photoLibrary.fetchCollection(configure: self.configure)
-    }else{
+      photoLibrary.delegate = self
+      photoLibrary.fetchCollection(configure: configuration)
+    } else {
       //self.dismiss(animated: true, completion: nil)
     }
   }
@@ -343,23 +294,6 @@ extension TLPhotosPickerViewController {
   fileprivate func getfocusedIndex() -> Int {
     guard let focused = self.focusedCollection, let result = self.collections.index(where: { $0 == focused }) else { return 0 }
     return result
-  }
-  
-  fileprivate func focused(collection: SVAssetCollection) {
-    func resetRequest() {
-      cancelAllImageAssets()
-    }
-    resetRequest()
-    self.collections[getfocusedIndex()].recentPosition = self.collectionView.contentOffset
-    var reloadIndexPaths = [IndexPath(row: getfocusedIndex(), section: 0)]
-    self.focusedCollection = collection
-    self.focusedCollection?.fetchResult = self.photoLibrary.fetchResult(collection: collection, configure: self.configure)
-    reloadIndexPaths.append(IndexPath(row: getfocusedIndex(), section: 0))
-    self.albumPopView.tableView.reloadRows(at: reloadIndexPaths, with: .none)
-    self.albumPopView.show(false, duration: 0.2)
-    self.updateTitle()
-    self.reloadCollectionView()
-    self.collectionView.contentOffset = collection.recentPosition
   }
   
   fileprivate func cancelAllImageAssets() {
@@ -375,31 +309,21 @@ extension TLPhotosPickerViewController {
     self.albumPopView.show(self.albumPopView.isHidden)
   }
   
-  @IBAction open func cancelButtonTap() {
+  @objc open func cancel(_ sender: Any) {
     self.stopPlay()
     self.dismiss(done: false)
   }
   
-  @IBAction open func doneButtonTap() {
+  @objc open func done(_ sender: Any) {
     self.stopPlay()
     self.dismiss(done: true)
   }
   
   fileprivate func dismiss(done: Bool) {
     if done {
-      #if swift(>=4.1)
       self.delegate?.dismissPhotoPicker(withPHAssets: self.selectedAssets.compactMap{ $0.phAsset })
-      #else
-      self.delegate?.dismissPhotoPicker(withPHAssets: self.selectedAssets.flatMap{ $0.phAsset })
-      #endif
-      self.delegate?.dismissPhotoPicker(withTLPHAssets: self.selectedAssets)
       self.completionWithTLPHAssets?(self.selectedAssets)
-      #if swift(>=4.1)
-      self.completionWithPHAssets?(self.selectedAssets.compactMap{ $0.phAsset })
-      #else
-      self.completionWithPHAssets?(self.selectedAssets.flatMap{ $0.phAsset })
-      #endif
-    }else {
+    } else {
       self.delegate?.photoPickerDidCancel()
       self.didCancel?()
     }
@@ -419,11 +343,11 @@ extension TLPhotosPickerViewController {
   }
   
   fileprivate func maxCheck() -> Bool {
-    if self.configure.singleSelectedMode {
+    if self.configuration.singleSelectedMode {
       self.selectedAssets.removeAll()
       self.orderUpdateCells()
     }
-    if let max = self.configure.maxSelectedAssets, max <= self.selectedAssets.count {
+    if let max = self.configuration.maxSelectedAssets, max <= self.selectedAssets.count {
       self.delegate?.didExceedMaximumNumberOfSelection(picker: self)
       self.didExceedMaximumNumberOfSelection?(self)
       return true
@@ -484,74 +408,76 @@ extension TLPhotosPickerViewController: UIImagePickerControllerDelegate, UINavig
   }
   
   fileprivate func showCamera() {
-    guard !maxCheck() else { return }
-    let picker = UIImagePickerController()
-    picker.sourceType = .camera
-    picker.mediaTypes = [kUTTypeImage as String]
-    if self.configure.allowedVideoRecording {
-      picker.mediaTypes.append(kUTTypeMovie as String)
-      picker.videoQuality = self.configure.recordingVideoQuality
-      if let duration = self.configure.maxVideoDuration {
-        picker.videoMaximumDuration = duration
+    guard !maxCheck() else {
+      return
+    }
+    let pickerController = UIImagePickerController()
+    pickerController.sourceType = .camera
+    pickerController.mediaTypes = [kUTTypeImage as String]
+    if configuration.allowedVideoRecording {
+      pickerController.mediaTypes.append(kUTTypeMovie as String)
+      pickerController.videoQuality = configuration.recordingVideoQuality
+      if let duration = configuration.maxVideoDuration {
+        pickerController.videoMaximumDuration = duration
       }
     }
-    picker.allowsEditing = false
-    picker.delegate = self
-    self.present(picker, animated: true, completion: nil)
+    pickerController.allowsEditing = false
+    pickerController.delegate = self
+    present(pickerController, animated: true, completion: nil)
   }
   
   fileprivate func handleDeniedAlbumsAuthorization() {
-    self.delegate?.handleNoAlbumPermissions(picker: self)
-    self.handleNoAlbumPermissions?(self)
+    delegate?.handleNoAlbumPermissions(picker: self)
+    handleNoAlbumPermissions?(self)
   }
   
   fileprivate func handleDeniedCameraAuthorization() {
-    self.delegate?.handleNoCameraPermissions(picker: self)
-    self.handleNoCameraPermissions?(self)
+    delegate?.handleNoCameraPermissions(picker: self)
+    handleNoCameraPermissions?(self)
   }
   
   open func imagePickerControllerDidCancel(_ picker: UIImagePickerController) {
     picker.dismiss(animated: true, completion: nil)
   }
   
-  open func imagePickerController(_ picker: UIImagePickerController, didFinishPickingMediaWithInfo info: [String : Any]) {
-    if let image = (info[UIImagePickerControllerOriginalImage] as? UIImage) {
-      var placeholderAsset: PHObjectPlaceholder? = nil
+  open func imagePickerController(_ picker: UIImagePickerController, didFinishPickingMediaWithInfo info: [String: Any]) {
+    if let image = info[UIImagePickerControllerOriginalImage] as? UIImage {
+      var placeholderAsset: PHObjectPlaceholder?
       PHPhotoLibrary.shared().performChanges({
-        let newAssetRequest = PHAssetChangeRequest.creationRequestForAsset(from: image)
-        placeholderAsset = newAssetRequest.placeholderForCreatedAsset
-      }, completionHandler: { [weak self] (sucess, error) in
-        if sucess, let `self` = self, let identifier = placeholderAsset?.localIdentifier {
+        placeholderAsset = PHAssetChangeRequest.creationRequestForAsset(from: image).placeholderForCreatedAsset
+      }, completionHandler: { [weak self] success, error in
+        if success, let `self` = self, let identifier = placeholderAsset?.localIdentifier {
           guard let asset = PHAsset.fetchAssets(withLocalIdentifiers: [identifier], options: nil).firstObject else { return }
           var result = SVAsset(with: asset)
           result.selectedOrder = self.selectedAssets.count + 1
           self.selectedAssets.append(result)
-          self.logDelegate?.selectedPhoto(picker: self, at: 1)
         }
       })
     }
     else if (info[UIImagePickerControllerMediaType] as? String) == kUTTypeMovie as String {
       var placeholderAsset: PHObjectPlaceholder? = nil
       PHPhotoLibrary.shared().performChanges({
-        let newAssetRequest = PHAssetChangeRequest.creationRequestForAssetFromVideo(atFileURL: info[UIImagePickerControllerMediaURL] as! URL)
-        placeholderAsset = newAssetRequest?.placeholderForCreatedAsset
-      }) { [weak self] (sucess, error) in
-        if sucess, let `self` = self, let identifier = placeholderAsset?.localIdentifier {
-          guard let asset = PHAsset.fetchAssets(withLocalIdentifiers: [identifier], options: nil).firstObject else { return }
+        let newAssetRequest = PHAssetChangeRequest.creationRequestForAssetFromVideo(atFileURL: info[UIImagePickerControllerMediaURL] as! URL)!
+        placeholderAsset = newAssetRequest.placeholderForCreatedAsset
+      }, completionHandler: { [weak self] success, error in
+        if success, let `self` = self, let identifier = placeholderAsset?.localIdentifier {
+          guard let asset = PHAsset.fetchAssets(withLocalIdentifiers: [identifier], options: nil).firstObject else {
+            return
+          }
           var result = SVAsset(with: asset)
           result.selectedOrder = self.selectedAssets.count + 1
           self.selectedAssets.append(result)
-          self.logDelegate?.selectedPhoto(picker: self, at: 1)
         }
-      }
+      })
     }
-    
     picker.dismiss(animated: true, completion: nil)
   }
 }
 
 // MARK: - UICollectionView Scroll Delegate
+
 extension TLPhotosPickerViewController {
+  
   open func scrollViewDidEndDragging(_ scrollView: UIScrollView, willDecelerate decelerate: Bool) {
     if !decelerate {
       videoCheck()
@@ -568,30 +494,25 @@ extension TLPhotosPickerViewController {
         playVideo(asset: asset.1, indexPath: asset.0)
       }
     }
-    guard self.configure.autoPlay else { return }
-    guard self.playRequestId == nil else { return }
+    guard configuration.autoPlay, playRequestId == nil else {
+      return
+    }
     let visibleIndexPaths = self.collectionView.indexPathsForVisibleItems.sorted(by: { $0.row < $1.row })
-    #if swift(>=4.1)
     let boundAssets = visibleIndexPaths.compactMap{ indexPath -> (IndexPath,SVAsset)? in
       guard let asset = self.focusedCollection?.getTLAsset(at: indexPath.row), asset.phAsset.mediaType == .video else { return nil }
       return (indexPath,asset)
     }
-    #else
-    let boundAssets = visibleIndexPaths.flatMap{ indexPath -> (IndexPath,TLPHAsset)? in
-    guard let asset = self.focusedCollection?.getTLAsset(at: indexPath.row),asset.phAsset?.mediaType == .video else { return nil }
-    return (indexPath,asset)
-    }
-    #endif
     if let firstSelectedVideoAsset = (boundAssets.filter{ getSelectedAssets($0.1) != nil }.first) {
       play(asset: firstSelectedVideoAsset)
-    }else if let firstVideoAsset = boundAssets.first {
+    } else if let firstVideoAsset = boundAssets.first {
       play(asset: firstVideoAsset)
     }
     
   }
 }
 // MARK: - Video & LivePhotos Control PHLivePhotoViewDelegate
-extension TLPhotosPickerViewController: PHLivePhotoViewDelegate {
+extension TLPhotosPickerViewController : PHLivePhotoViewDelegate {
+  
   fileprivate func stopPlay() {
     guard let playRequest = self.playRequestId else { return }
     self.playRequestId = nil
@@ -609,13 +530,13 @@ extension TLPhotosPickerViewController: PHLivePhotoViewDelegate {
           let player = AVPlayer(playerItem: playerItem)
           cell.player = player
           player.play()
-          player.isMuted = self.configure.muteAudio
+          player.isMuted = self.configuration.muteAudio
         }
       })
       if requestId > 0 {
         self.playRequestId = (indexPath,requestId)
       }
-    }else if asset.type == .livePhoto {
+    } else if asset.type == .livePhoto {
       
       guard let cell = self.collectionView.cellForItem(at: indexPath) as? TLPhotoCollectionViewCell else { return }
       let requestId = self.photoLibrary.livePhotoAsset(asset: asset.phAsset, size: self.thumbnailSize, completion: { [weak cell] (livePhoto,complete) in
@@ -641,16 +562,16 @@ extension TLPhotosPickerViewController: PHLivePhotoViewDelegate {
 
 // MARK: - PHPhotoLibraryChangeObserver
 extension TLPhotosPickerViewController: PHPhotoLibraryChangeObserver {
+  
   public func photoLibraryDidChange(_ changeInstance: PHChange) {
     guard getfocusedIndex() == 0 else { return }
     guard let changeFetchResult = self.focusedCollection?.fetchResult else { return }
     guard let changes = changeInstance.changeDetails(for: changeFetchResult) else { return }
-    let addIndex = self.usedCameraButton ? 1 : 0
+    let addIndex = configuration.usedCameraButton ? 1 : 0
     DispatchQueue.main.sync {
       if changes.hasIncrementalChanges {
         var deletedSelectedAssets = false
         var order = 0
-        #if swift(>=4.1)
         self.selectedAssets = self.selectedAssets.enumerated().compactMap({ (offset,asset) -> SVAsset? in
           var asset = asset
           if changes.fetchResultAfterChanges.contains(asset.phAsset) {
@@ -661,22 +582,10 @@ extension TLPhotosPickerViewController: PHPhotoLibraryChangeObserver {
           deletedSelectedAssets = true
           return nil
         })
-        #else
-        self.selectedAssets = self.selectedAssets.enumerated().flatMap({ (offset,asset) -> TLPHAsset? in
-        var asset = asset
-        if let phAsset = asset.phAsset, changes.fetchResultAfterChanges.contains(phAsset) {
-        order += 1
-        asset.selectedOrder = order
-        return asset
-        }
-        deletedSelectedAssets = true
-        return nil
-        })
-        #endif
         if deletedSelectedAssets {
           self.focusedCollection?.fetchResult = changes.fetchResultAfterChanges
           self.collectionView.reloadData()
-        }else {
+        } else {
           self.collectionView.performBatchUpdates({ [weak self] in
             guard let `self` = self else { return }
             self.focusedCollection?.fetchResult = changes.fetchResultAfterChanges
@@ -689,9 +598,9 @@ extension TLPhotosPickerViewController: PHPhotoLibraryChangeObserver {
             if let changed = changes.changedIndexes, changed.count > 0 {
               self.collectionView.reloadItems(at: changed.map { IndexPath(item: $0+addIndex, section:0) })
             }
-          })
+          }, completion: nil)
         }
-      }else {
+      } else {
         self.focusedCollection?.fetchResult = changes.fetchResultAfterChanges
         self.collectionView.reloadData()
       }
@@ -704,7 +613,8 @@ extension TLPhotosPickerViewController: PHPhotoLibraryChangeObserver {
 }
 
 // MARK: - UICollectionView delegate & datasource
-extension TLPhotosPickerViewController: UICollectionViewDelegate,UICollectionViewDataSource,UICollectionViewDataSourcePrefetching {
+extension TLPhotosPickerViewController : UICollectionViewDataSource, UICollectionViewDataSourcePrefetching, UICollectionViewDelegate {
+  
   fileprivate func getSelectedAssets(_ asset: SVAsset) -> SVAsset? {
     if let index = self.selectedAssets.index(where: { $0.phAsset == asset.phAsset }) {
       return self.selectedAssets[index]
@@ -720,7 +630,7 @@ extension TLPhotosPickerViewController: UICollectionViewDelegate,UICollectionVie
       if let selectedAsset = getSelectedAssets(asset) {
         cell.selectedAsset = true
         cell.orderLabel?.text = "\(selectedAsset.selectedOrder)"
-      }else {
+      } else {
         cell.selectedAsset = false
       }
     }
@@ -733,13 +643,12 @@ extension TLPhotosPickerViewController: UICollectionViewDelegate,UICollectionVie
       if Platform.isSimulator {
         print("not supported by the simulator.")
         return
-      }else {
-        if self.configure.cameraCellNibSet?.nibName != nil {
+      } else {
+        if configuration.cameraCellNibSet?.nibName != nil {
           cell.selectedCell()
-        }else {
+        } else {
           showCameraIfAuthorized()
         }
-        self.logDelegate?.selectedCameraCell(picker: self)
         return
       }
     }
@@ -747,37 +656,27 @@ extension TLPhotosPickerViewController: UICollectionViewDelegate,UICollectionVie
     cell.popScaleAnim()
     if let index = self.selectedAssets.index(where: { $0.phAsset == asset.phAsset }) {
       //deselect
-      self.logDelegate?.deselectedPhoto(picker: self, at: indexPath.row)
       self.selectedAssets.remove(at: index)
-      #if swift(>=4.1)
       self.selectedAssets = self.selectedAssets.enumerated().compactMap({ (offset,asset) -> SVAsset? in
         var asset = asset
         asset.selectedOrder = offset + 1
         return asset
       })
-      #else
-      self.selectedAssets = self.selectedAssets.enumerated().flatMap({ (offset,asset) -> TLPHAsset? in
-      var asset = asset
-      asset.selectedOrder = offset + 1
-      return asset
-      })
-      #endif
       cell.selectedAsset = false
       cell.stopPlay()
       self.orderUpdateCells()
       if self.playRequestId?.indexPath == indexPath {
         stopPlay()
       }
-    }else {
+    } else {
       //select
-      self.logDelegate?.selectedPhoto(picker: self, at: indexPath.row)
       guard !maxCheck() else { return }
       guard canSelect(phAsset: asset.phAsset) else { return }
       asset.selectedOrder = self.selectedAssets.count + 1
       self.selectedAssets.append(asset)
       cell.selectedAsset = true
       cell.orderLabel?.text = "\(asset.selectedOrder)"
-      if asset.type != .photo, self.configure.autoPlay {
+      if asset.type != .photo, configuration.autoPlay {
         playVideo(asset: asset, indexPath: indexPath)
       }
     }
@@ -800,17 +699,17 @@ extension TLPhotosPickerViewController: UICollectionViewDelegate,UICollectionVie
   open func collectionView(_ collectionView: UICollectionView, cellForItemAt indexPath: IndexPath) -> UICollectionViewCell {
     func makeCell(nibName: String) -> TLPhotoCollectionViewCell {
       let cell = collectionView.dequeueReusableCell(withReuseIdentifier: nibName, for: indexPath) as! TLPhotoCollectionViewCell
-      cell.configure = self.configure
+      cell.configure = configuration
       cell.imageView?.image = self.placeholderThumbnail
       cell.liveBadgeImageView = nil
       return cell
     }
-    let nibName = self.configure.nibSet?.nibName ?? "TLPhotoCollectionViewCell"
+    let nibName = configuration.nibSet?.nibName ?? "TLPhotoCollectionViewCell"
     var cell = makeCell(nibName: nibName)
     guard let collection = self.focusedCollection else { return cell }
     cell.isCameraCell = collection.useCameraButton && indexPath.row == 0
     if cell.isCameraCell {
-      if let nibName = self.configure.cameraCellNibSet?.nibName {
+      if let nibName = configuration.cameraCellNibSet?.nibName {
         cell = makeCell(nibName: nibName)
       }else{
         cell.imageView?.image = self.cameraImage
@@ -818,11 +717,13 @@ extension TLPhotosPickerViewController: UICollectionViewDelegate,UICollectionVie
       cell.willDisplayCell()
       return cell
     }
-    guard let asset = collection.getTLAsset(at: indexPath.row) else { return cell }
+    guard let asset = collection.getTLAsset(at: indexPath.row) else {
+      return cell
+    }
     if let selectedAsset = getSelectedAssets(asset) {
       cell.selectedAsset = true
       cell.orderLabel?.text = "\(selectedAsset.selectedOrder)"
-    }else{
+    } else {
       cell.selectedAsset = false
     }
     if asset.state == .progress {
@@ -830,18 +731,18 @@ extension TLPhotosPickerViewController: UICollectionViewDelegate,UICollectionVie
     }else {
       cell.indicator?.stopAnimating()
     }
-    if self.usedPrefetch {
+    if configuration.usedPrefetch {
       let options = PHImageRequestOptions()
       options.deliveryMode = .opportunistic
       options.resizeMode = .exact
       options.isNetworkAccessAllowed = true
-      let requestId = self.photoLibrary.imageAsset(asset: asset.phAsset, size: self.thumbnailSize, options: options) { [weak self, weak cell] (image,complete) in
+      let requestId = self.photoLibrary.imageAsset(asset: asset.phAsset, size: self.thumbnailSize, options: options) { [weak self, weak cell] image, complete in
         guard let `self` = self else { return }
         DispatchQueue.main.async {
           if self.requestIds[indexPath] != nil {
             cell?.imageView?.image = image
             cell?.update(with: asset.phAsset)
-            if self.allowedVideo {
+            if self.configuration.allowedVideo {
               cell?.durationView?.isHidden = asset.type != .video
               cell?.duration = asset.type == .video ? asset.phAsset.duration : nil
             }
@@ -862,7 +763,7 @@ extension TLPhotosPickerViewController: UICollectionViewDelegate,UICollectionVie
             if self.requestIds[indexPath] != nil {
               cell?.imageView?.image = image
               cell?.update(with: asset.phAsset)
-              if self.allowedVideo {
+              if self.configuration.allowedVideo {
                 cell?.durationView?.isHidden = asset.type != .video
                 cell?.duration = asset.type == .video ? asset.phAsset.duration : nil
               }
@@ -877,7 +778,7 @@ extension TLPhotosPickerViewController: UICollectionViewDelegate,UICollectionVie
         }
       }
     }
-    if self.allowedLivePhotos {
+    if configuration.allowedLivePhotos {
       cell.liveBadgeImageView?.image = asset.type == .livePhoto ? PHLivePhotoView.livePhotoBadgeImage(options: .overContent) : nil
       cell.livePhotoView?.delegate = asset.type == .livePhoto ? self : nil
     }
@@ -889,17 +790,19 @@ extension TLPhotosPickerViewController: UICollectionViewDelegate,UICollectionVie
   }
   
   open func numberOfSections(in collectionView: UICollectionView) -> Int {
-    return 1
+    if let focusCollection = focusedCollection {
+      return 1
+    }
+    return 0
   }
   
   open func collectionView(_ collectionView: UICollectionView, numberOfItemsInSection section: Int) -> Int {
-    guard let collection = self.focusedCollection else { return 0 }
-    return collection.count
+    return focusedCollection!.count
   }
   
   //Prefetch
   open func collectionView(_ collectionView: UICollectionView, prefetchItemsAt indexPaths: [IndexPath]) {
-    if self.usedPrefetch {
+    if configuration.usedPrefetch {
       queue.async { [weak self] in
         guard let `self` = self, let collection = self.focusedCollection else { return }
         var assets = [PHAsset]()
@@ -916,7 +819,7 @@ extension TLPhotosPickerViewController: UICollectionViewDelegate,UICollectionVie
   }
   
   open func collectionView(_ collectionView: UICollectionView, cancelPrefetchingForItemsAt indexPaths: [IndexPath]) {
-    if self.usedPrefetch {
+    if configuration.usedPrefetch {
       for indexPath in indexPaths {
         guard let requestId = self.requestIds[indexPath] else { continue }
         self.photoLibrary.cancelPHImageRequest(requestId: requestId)
@@ -936,27 +839,23 @@ extension TLPhotosPickerViewController: UICollectionViewDelegate,UICollectionVie
       }
     }
   }
-  public func collectionView(_ collectionView: UICollectionView, willDisplay cell: UICollectionViewCell, forItemAt indexPath: IndexPath) {
-    if self.usedPrefetch, let cell = cell as? TLPhotoCollectionViewCell, let collection = self.focusedCollection, let asset = collection.getTLAsset(at: indexPath.row) {
+  
+  open func collectionView(_ collectionView: UICollectionView, willDisplay cell: UICollectionViewCell, forItemAt indexPath: IndexPath) {
+    if configuration.usedPrefetch, let cell = cell as? TLPhotoCollectionViewCell, let collection = self.focusedCollection, let asset = collection.getTLAsset(at: indexPath.row) {
       if let selectedAsset = getSelectedAssets(asset) {
         cell.selectedAsset = true
         cell.orderLabel?.text = "\(selectedAsset.selectedOrder)"
-      }else{
+      } else {
         cell.selectedAsset = false
       }
     }
   }
 }
 
-// MARK: - UITableView datasource & delegate
-extension TLPhotosPickerViewController: UITableViewDelegate,UITableViewDataSource {
-  //delegate
-  open func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
-    self.logDelegate?.selectedAlbum(picker: self, title: self.collections[indexPath.row].title, at: indexPath.row)
-    self.focused(collection: self.collections[indexPath.row])
-  }
+// MARK: - UITableViewDataSource, UITableViewDelegate
+
+extension TLPhotosPickerViewController : UITableViewDataSource, UITableViewDelegate {
   
-  //datasource
   open func numberOfSections(in tableView: UITableView) -> Int {
     return 1
   }
@@ -966,21 +865,42 @@ extension TLPhotosPickerViewController: UITableViewDelegate,UITableViewDataSourc
   }
   
   open func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
-    let cell = tableView.dequeueReusableCell(withIdentifier: "TLCollectionTableViewCell", for: indexPath) as! TLCollectionTableViewCell
+    return tableView.dequeueReusableCell(withIdentifier: "TLCollectionTableViewCell", for: indexPath)
+  }
+  
+  open func tableView(_ tableView: UITableView, willDisplay cell: UITableViewCell, forRowAt indexPath: IndexPath) {
+    let cell = cell as! SVCollectionTableViewCell
     let collection = self.collections[indexPath.row]
     cell.titleLabel.text = collection.title
-    cell.subTitleLabel.text = "\(collection.fetchResult?.count ?? 0)"
+    cell.subtitleLabel.text = "\(collection.fetchResult.count)"
     if let phAsset = collection.getAsset(at: collection.useCameraButton ? 1 : 0) {
       let scale = UIScreen.main.scale
       let size = CGSize(width: 80*scale, height: 80*scale)
       self.photoLibrary.imageAsset(asset: phAsset, size: size, completion: { [weak cell] (image,complete) in
         DispatchQueue.main.async {
-          cell?.thumbImageView.image = image
+          cell?.thumbnailImageView.image = image
         }
       })
     }
     cell.accessoryType = getfocusedIndex() == indexPath.row ? .checkmark : .none
     cell.selectionStyle = .none
-    return cell
+  }
+  
+  open func tableView(_ tableView: UITableView, didSelectRowAt indexPath: IndexPath) {
+    let collection = collections[indexPath.row]
+    func resetRequest() {
+      cancelAllImageAssets()
+    }
+    resetRequest()
+    self.collections[getfocusedIndex()].recentPosition = self.collectionView.contentOffset
+    var reloadIndexPaths = [IndexPath(row: getfocusedIndex(), section: 0)]
+    self.focusedCollection = collection
+    self.focusedCollection?.fetchResult = self.photoLibrary.fetchResult(collection: collection, configure: self.configuration)
+    reloadIndexPaths.append(IndexPath(row: getfocusedIndex(), section: 0))
+    self.albumPopView.tableView.reloadRows(at: reloadIndexPaths, with: .none)
+    self.albumPopView.show(false, duration: 0.2)
+    self.updateTitle()
+    self.reloadCollectionView()
+    self.collectionView.contentOffset = collection.recentPosition
   }
 }

@@ -8,16 +8,31 @@
 
 import UIKit
 
-protocol PopupViewProtocol: AnyObject {
+class TLAlbumPopView: UIView {
   
-  var bgView: UIView! { get set }
-  var popupView: UIView! { get set }
-  var originalFrame: CGRect { get set }
-  var show: Bool { get set }
-  func setupPopupFrame()
-}
-
-extension PopupViewProtocol where Self: UIView {
+  @IBOutlet var bgView: UIView!
+  @IBOutlet var popupView: UIView!
+  @IBOutlet var popupViewHeight: NSLayoutConstraint!
+  @IBOutlet var tableView: UITableView!
+  var originalFrame = CGRect.zero
+  var show = false
+  
+  deinit {
+    //        print("deinit TLAlbumPopView")
+  }
+  
+  override func awakeFromNib() {
+    super.awakeFromNib()
+    
+    popupView.layer.cornerRadius = 5.0
+    let tapGesture = UITapGestureRecognizer(target: self, action: #selector(tapBgView))
+    bgView.addGestureRecognizer(tapGesture)
+    tableView.register(SVCollectionTableViewCell.self, forCellReuseIdentifier: "TLCollectionTableViewCell")
+  }
+  
+  @objc func tapBgView() {
+    show(false)
+  }
   
   fileprivate func getFrame(scale: CGFloat) -> CGRect {
     var frame = originalFrame
@@ -55,32 +70,5 @@ extension PopupViewProtocol where Self: UIView {
         self.show = show
       }
     })
-  }
-}
-
-open class TLAlbumPopView: UIView, PopupViewProtocol {
-  
-  @IBOutlet var bgView: UIView!
-  @IBOutlet var popupView: UIView!
-  @IBOutlet var popupViewHeight: NSLayoutConstraint!
-  @IBOutlet var tableView: UITableView!
-  @objc var originalFrame = CGRect.zero
-  @objc var show = false
-  
-  deinit {
-    //        print("deinit TLAlbumPopView")
-  }
-  
-  override open func awakeFromNib() {
-    super.awakeFromNib()
-    
-    popupView.layer.cornerRadius = 5.0
-    let tapGesture = UITapGestureRecognizer(target: self, action: #selector(tapBgView))
-    bgView.addGestureRecognizer(tapGesture)
-    tableView.register(UINib(nibName: "TLCollectionTableViewCell", bundle: Bundle(for: TLCollectionTableViewCell.self)), forCellReuseIdentifier: "TLCollectionTableViewCell")
-  }
-  
-  @objc func tapBgView() {
-    show(false)
   }
 }

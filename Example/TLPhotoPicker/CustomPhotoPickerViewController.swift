@@ -12,7 +12,7 @@ import TLPhotoPicker
 class CustomPhotoPickerViewController: TLPhotosPickerViewController {
     override func makeUI() {
         super.makeUI()
-        self.customNavItem.leftBarButtonItem = UIBarButtonItem.init(barButtonSystemItem: .stop, target: nil, action: #selector(customAction))
+        self.navigationItem.leftBarButtonItem = UIBarButtonItem.init(barButtonSystemItem: .cancel, target: self, action: #selector(customAction))
     }
     @objc func customAction() {
         self.dismiss(animated: true, completion: nil)

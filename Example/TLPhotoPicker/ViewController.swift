@@ -22,13 +22,12 @@ class ViewController: UIViewController,TLPhotosPickerViewControllerDelegate {
         viewController.didExceedMaximumNumberOfSelection = { [weak self] (picker) in
             self?.showExceededMaximumAlert(vc: picker)
         }
-        var configure = TLPhotosPickerConfigure()
+        var configure = SVPhotosPickerConfiguration()
         configure.numberOfColumn = 3
-        viewController.configure = configure
+        viewController.configuration = configure
         viewController.selectedAssets = self.selectedAssets
-        viewController.logDelegate = self
 
-        self.present(viewController, animated: true, completion: nil)
+        self.present(viewController.wrapNavigationController(), animated: true, completion: nil)
     }
     
     @IBAction func pickerWithCustomCameraCell() {
@@ -37,14 +36,14 @@ class ViewController: UIViewController,TLPhotosPickerViewControllerDelegate {
         viewController.didExceedMaximumNumberOfSelection = { [weak self] (picker) in
             self?.showExceededMaximumAlert(vc: picker)
         }
-        var configure = TLPhotosPickerConfigure()
+        var configure = SVPhotosPickerConfiguration()
         configure.numberOfColumn = 3
         if #available(iOS 10.2, *) {
             configure.cameraCellNibSet = (nibName: "CustomCameraCell", bundle: Bundle.main)
         }
-        viewController.configure = configure
+        viewController.configuration = configure
         viewController.selectedAssets = self.selectedAssets
-        self.present(viewController.wrapNavigationControllerWithoutBar(), animated: true, completion: nil)
+        self.present(viewController.wrapNavigationController(), animated: true, completion: nil)
     }
 
     @IBAction func pickerWithNavigation() {
@@ -53,12 +52,12 @@ class ViewController: UIViewController,TLPhotosPickerViewControllerDelegate {
         viewController.didExceedMaximumNumberOfSelection = { [weak self] (picker) in
             self?.showExceededMaximumAlert(vc: picker)
         }
-        var configure = TLPhotosPickerConfigure()
+        var configure = SVPhotosPickerConfiguration()
         configure.numberOfColumn = 3
-        viewController.configure = configure
+        viewController.configuration = configure
         viewController.selectedAssets = self.selectedAssets
         
-        self.present(viewController.wrapNavigationControllerWithoutBar(), animated: true, completion: nil)
+        self.present(viewController.wrapNavigationController(), animated: true, completion: nil)
     }
     
     @IBAction func pickerWithCustomRules() {
@@ -74,13 +73,13 @@ class ViewController: UIViewController,TLPhotosPickerViewControllerDelegate {
             }
             return true
         }
-        var configure = TLPhotosPickerConfigure()
+        var configure = SVPhotosPickerConfiguration()
         configure.numberOfColumn = 3
         configure.nibSet = (nibName: "CustomCell_Instagram", bundle: Bundle.main)
-        viewController.configure = configure
+        viewController.configuration = configure
         viewController.selectedAssets = self.selectedAssets
         
-        self.present(viewController.wrapNavigationControllerWithoutBar(), animated: true, completion: nil)
+        self.present(viewController.wrapNavigationController(), animated: true, completion: nil)
     }
     
     func dismissPhotoPicker(withTLPHAssets: [SVAsset]) {
@@ -145,7 +144,7 @@ class ViewController: UIViewController,TLPhotosPickerViewControllerDelegate {
         }
     }
     
-    func dismissPhotoPicker(withPHAssets: [PHAsset]) {
+    func dismissPhotoPicker(withPHAssets: [SVAsset]) {
         // if you want to used phasset.
     }
 
@@ -185,24 +184,5 @@ class ViewController: UIViewController,TLPhotosPickerViewControllerDelegate {
         let alert = UIAlertController(title: "Oups!", message: "The required size is: 300 x 300", preferredStyle: .alert)
         alert.addAction(UIAlertAction(title: "Ok", style: .default, handler: nil))
         vc.present(alert, animated: true, completion: nil)
-    }
-}
-
-extension ViewController: TLPhotosPickerLogDelegate {
-    //For Log User Interaction
-    func selectedCameraCell(picker: TLPhotosPickerViewController) {
-        print("selectedCameraCell")
-    }
-    
-    func selectedPhoto(picker: TLPhotosPickerViewController, at: Int) {
-        print("selectedPhoto")
-    }
-    
-    func deselectedPhoto(picker: TLPhotosPickerViewController, at: Int) {
-        print("deselectedPhoto")
-    }
-    
-    func selectedAlbum(picker: TLPhotosPickerViewController, title: String?, at: Int) {
-        print("selectedAlbum")
     }
 }

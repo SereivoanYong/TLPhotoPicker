@@ -44,7 +44,7 @@ open class TLPhotoCollectionViewCell: UICollectionViewCell {
   @IBOutlet open var orderLabel: UILabel?
   @IBOutlet open var orderBgView: UIView?
   
-  var configure = TLPhotosPickerConfigure() {
+  var configure = SVPhotosPickerConfiguration() {
     didSet {
       self.selectedView?.layer.borderColor = self.configure.selectedColor.cgColor
       self.orderBgView?.backgroundColor = self.configure.selectedColor

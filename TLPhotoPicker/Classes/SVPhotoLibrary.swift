@@ -125,7 +125,7 @@ extension PHFetchOptions {
 
 //MARK: - Load Collection
 extension SVPhotoLibrary {
-  func getOption(configure: TLPhotosPickerConfigure) -> PHFetchOptions {
+  func getOption(configure: SVPhotosPickerConfiguration) -> PHFetchOptions {
     
     let options = configure.fetchOption ?? PHFetchOptions()
     options.sortDescriptors = [NSSortDescriptor(key: "creationDate", ascending: false)]
@@ -143,13 +143,11 @@ extension SVPhotoLibrary {
     return options
   }
   
-  func fetchResult(collection: SVAssetCollection?, configure: TLPhotosPickerConfigure) -> PHFetchResult<PHAsset>? {
-    guard let phAssetCollection = collection?.phAssetCollection else { return nil }
-    let options = getOption(configure: configure)
-    return PHAsset.fetchAssets(in: phAssetCollection, options: options)
+  func fetchResult(collection: SVAssetCollection, configure: SVPhotosPickerConfiguration) -> PHFetchResult<PHAsset> {
+    return PHAsset.fetchAssets(in: collection.phAssetCollection, options: getOption(configure: configure))
   }
   
-  func fetchCollection(configure: TLPhotosPickerConfigure) {
+  func fetchCollection(configure: SVPhotosPickerConfiguration) {
     let useCameraButton = configure.usedCameraButton
     let options = getOption(configure: configure)
     
@@ -164,8 +162,7 @@ extension SVPhotoLibrary {
       }
       for collection in collections {
         if !result.contains(where: { $0.phAssetCollection.localIdentifier == collection.localIdentifier }) {
-          var assetsCollection = SVAssetCollection(with: collection)
-          assetsCollection.fetchResult = PHAsset.fetchAssets(in: collection, options: options)
+          var assetsCollection = SVAssetCollection(with: collection, using: PHAsset.fetchAssets(in: collection, options: options))
           if assetsCollection.count > 0 {
             result.append(assetsCollection)
           }
@@ -177,8 +174,7 @@ extension SVPhotoLibrary {
     func getSmartAlbum(subType: PHAssetCollectionSubtype, useCameraButton: Bool = false, result: inout [SVAssetCollection]) -> SVAssetCollection? {
       let fetchCollection = PHAssetCollection.fetchAssetCollections(with: .smartAlbum, subtype: subType, options: nil)
       if let collection = fetchCollection.firstObject, !result.contains(where: { $0.phAssetCollection.localIdentifier == collection.localIdentifier }) {
-        var assetsCollection = SVAssetCollection(with: collection)
-        assetsCollection.fetchResult = PHAsset.fetchAssets(in: collection, options: options)
+        var assetsCollection = SVAssetCollection(with: collection, using: PHAsset.fetchAssets(in: collection, options: options))
         if assetsCollection.count > 0 || useCameraButton {
           result.append(assetsCollection)
           return assetsCollection
@@ -192,7 +188,6 @@ extension SVPhotoLibrary {
       //Camera Roll
       let camerarollCollection = getSmartAlbum(subType: .smartAlbumUserLibrary, useCameraButton: useCameraButton, result: &assetCollections)
       if var cameraRoll = camerarollCollection {
-        cameraRoll.useCameraButton = useCameraButton
         assetCollections[0] = cameraRoll
         DispatchQueue.main.async {
           self?.delegate?.focusCollection(collection: cameraRoll)
@@ -217,8 +212,7 @@ extension SVPhotoLibrary {
       let albumsResult = PHCollectionList.fetchTopLevelUserCollections(with: nil)
       albumsResult.enumerateObjects({ (collection, index, stop) -> Void in
         guard let collection = collection as? PHAssetCollection else { return }
-        var assetsCollection = SVAssetCollection(with: collection)
-        assetsCollection.fetchResult = PHAsset.fetchAssets(in: collection, options: options)
+        var assetsCollection = SVAssetCollection(with: collection, using: PHAsset.fetchAssets(in: collection, options: options))
         if assetsCollection.count > 0, !assetCollections.contains(where: { $0.phAssetCollection.localIdentifier == collection.localIdentifier }) {
           assetCollections.append(assetsCollection)
         }
