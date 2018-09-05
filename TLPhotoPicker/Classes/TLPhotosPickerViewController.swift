@@ -156,7 +156,7 @@ open class TLPhotosPickerViewController: UIViewController {
   fileprivate var focusedCollection: SVAssetCollection? = nil
   fileprivate var requestIds = [IndexPath:PHImageRequestID]()
   fileprivate var playRequestId: (indexPath: IndexPath, requestId: PHImageRequestID)? = nil
-  fileprivate var photoLibrary = TLPhotoLibrary()
+  fileprivate var photoLibrary = SVPhotoLibrary()
   fileprivate var queue = DispatchQueue(label: "tilltue.photos.pikcker.queue")
   fileprivate var thumbnailSize = CGSize.zero
   fileprivate var placeholderThumbnail: UIImage? = nil

@@ -41,7 +41,7 @@ public struct SVAsset {
   
   public var fullResolutionImage: UIImage? {
     get {
-      return TLPhotoLibrary.fullResolutionImageData(asset: phAsset)
+      return SVPhotoLibrary.fullResolutionImageData(asset: phAsset)
     }
   }
   
@@ -55,7 +55,7 @@ public struct SVAsset {
   
   @discardableResult
   public func cloudImageDownload(progressBlock: @escaping (Double) -> Void, completionBlock:@escaping (UIImage?)-> Void ) -> PHImageRequestID? {
-    return TLPhotoLibrary.cloudImageDownload(asset: phAsset, progressBlock: progressBlock, completionBlock: completionBlock)
+    return SVPhotoLibrary.cloudImageDownload(asset: phAsset, progressBlock: progressBlock, completionBlock: completionBlock)
   }
   
   public var originalFileName: String? {

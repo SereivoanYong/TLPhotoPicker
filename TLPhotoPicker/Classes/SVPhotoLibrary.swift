@@ -15,7 +15,7 @@ protocol TLPhotoLibraryDelegate: class {
   func focusCollection(collection: SVAssetCollection)
 }
 
-class TLPhotoLibrary {
+class SVPhotoLibrary {
   
   weak var delegate: TLPhotoLibraryDelegate? = nil
   
@@ -130,7 +130,7 @@ extension PHFetchOptions {
 }
 
 //MARK: - Load Collection
-extension TLPhotoLibrary {
+extension SVPhotoLibrary {
   func getOption(configure: TLPhotosPickerConfigure) -> PHFetchOptions {
     
     let options = configure.fetchOption ?? PHFetchOptions()
