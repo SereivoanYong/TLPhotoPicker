@@ -573,7 +573,7 @@ extension TLPhotosPickerViewController {
     let visibleIndexPaths = self.collectionView.indexPathsForVisibleItems.sorted(by: { $0.row < $1.row })
     #if swift(>=4.1)
     let boundAssets = visibleIndexPaths.compactMap{ indexPath -> (IndexPath,SVAsset)? in
-      guard let asset = self.focusedCollection?.getTLAsset(at: indexPath.row),asset.phAsset?.mediaType == .video else { return nil }
+      guard let asset = self.focusedCollection?.getTLAsset(at: indexPath.row), asset.phAsset.mediaType == .video else { return nil }
       return (indexPath,asset)
     }
     #else
@@ -601,10 +601,9 @@ extension TLPhotosPickerViewController: PHLivePhotoViewDelegate {
   
   fileprivate func playVideo(asset: SVAsset, indexPath: IndexPath) {
     stopPlay()
-    guard let phAsset = asset.phAsset else { return }
     if asset.type == .video {
       guard let cell = self.collectionView.cellForItem(at: indexPath) as? TLPhotoCollectionViewCell else { return }
-      let requestId = self.photoLibrary.videoAsset(asset: phAsset, completionBlock: { (playerItem, info) in
+      let requestId = self.photoLibrary.videoAsset(asset: asset.phAsset, completionBlock: { (playerItem, info) in
         DispatchQueue.main.sync { [weak self, weak cell] in
           guard let `self` = self, let cell = cell, cell.player == nil else { return }
           let player = AVPlayer(playerItem: playerItem)
@@ -619,7 +618,7 @@ extension TLPhotosPickerViewController: PHLivePhotoViewDelegate {
     }else if asset.type == .livePhoto {
       
       guard let cell = self.collectionView.cellForItem(at: indexPath) as? TLPhotoCollectionViewCell else { return }
-      let requestId = self.photoLibrary.livePhotoAsset(asset: phAsset, size: self.thumbnailSize, completionBlock: { [weak cell] (livePhoto,complete) in
+      let requestId = self.photoLibrary.livePhotoAsset(asset: asset.phAsset, size: self.thumbnailSize, completionBlock: { [weak cell] (livePhoto,complete) in
         cell?.livePhotoView?.isHidden = false
         cell?.livePhotoView?.livePhoto = livePhoto
         cell?.livePhotoView?.isMuted = true
@@ -654,7 +653,7 @@ extension TLPhotosPickerViewController: PHPhotoLibraryChangeObserver {
         #if swift(>=4.1)
         self.selectedAssets = self.selectedAssets.enumerated().compactMap({ (offset,asset) -> SVAsset? in
           var asset = asset
-          if let phAsset = asset.phAsset, changes.fetchResultAfterChanges.contains(phAsset) {
+          if changes.fetchResultAfterChanges.contains(asset.phAsset) {
             order += 1
             asset.selectedOrder = order
             return asset
@@ -744,7 +743,7 @@ extension TLPhotosPickerViewController: UICollectionViewDelegate,UICollectionVie
         return
       }
     }
-    guard var asset = collection.getTLAsset(at: indexPath.row), let phAsset = asset.phAsset else { return }
+    guard var asset = collection.getTLAsset(at: indexPath.row) else { return }
     cell.popScaleAnim()
     if let index = self.selectedAssets.index(where: { $0.phAsset == asset.phAsset }) {
       //deselect
@@ -773,7 +772,7 @@ extension TLPhotosPickerViewController: UICollectionViewDelegate,UICollectionVie
       //select
       self.logDelegate?.selectedPhoto(picker: self, at: indexPath.row)
       guard !maxCheck() else { return }
-      guard canSelect(phAsset: phAsset) else { return }
+      guard canSelect(phAsset: asset.phAsset) else { return }
       asset.selectedOrder = self.selectedAssets.count + 1
       self.selectedAssets.append(asset)
       cell.selectedAsset = true
@@ -831,58 +830,56 @@ extension TLPhotosPickerViewController: UICollectionViewDelegate,UICollectionVie
     }else {
       cell.indicator?.stopAnimating()
     }
-    if let phAsset = asset.phAsset {
-      if self.usedPrefetch {
-        let options = PHImageRequestOptions()
-        options.deliveryMode = .opportunistic
-        options.resizeMode = .exact
-        options.isNetworkAccessAllowed = true
-        let requestId = self.photoLibrary.imageAsset(asset: phAsset, size: self.thumbnailSize, options: options) { [weak self, weak cell] (image,complete) in
-          guard let `self` = self else { return }
+    if self.usedPrefetch {
+      let options = PHImageRequestOptions()
+      options.deliveryMode = .opportunistic
+      options.resizeMode = .exact
+      options.isNetworkAccessAllowed = true
+      let requestId = self.photoLibrary.imageAsset(asset: asset.phAsset, size: self.thumbnailSize, options: options) { [weak self, weak cell] (image,complete) in
+        guard let `self` = self else { return }
+        DispatchQueue.main.async {
+          if self.requestIds[indexPath] != nil {
+            cell?.imageView?.image = image
+            cell?.update(with: asset.phAsset)
+            if self.allowedVideo {
+              cell?.durationView?.isHidden = asset.type != .video
+              cell?.duration = asset.type == .video ? asset.phAsset.duration : nil
+            }
+            if complete {
+              self.requestIds.removeValue(forKey: indexPath)
+            }
+          }
+        }
+      }
+      if requestId > 0 {
+        self.requestIds[indexPath] = requestId
+      }
+    } else {
+      queue.async { [weak self, weak cell] in
+        guard let `self` = self else { return }
+        let requestId = self.photoLibrary.imageAsset(asset: asset.phAsset, size: self.thumbnailSize, completionBlock: { (image,complete) in
           DispatchQueue.main.async {
             if self.requestIds[indexPath] != nil {
               cell?.imageView?.image = image
-              cell?.update(with: phAsset)
+              cell?.update(with: asset.phAsset)
               if self.allowedVideo {
                 cell?.durationView?.isHidden = asset.type != .video
-                cell?.duration = asset.type == .video ? phAsset.duration : nil
+                cell?.duration = asset.type == .video ? asset.phAsset.duration : nil
               }
               if complete {
                 self.requestIds.removeValue(forKey: indexPath)
               }
             }
           }
-        }
+        })
         if requestId > 0 {
           self.requestIds[indexPath] = requestId
         }
-      }else {
-        queue.async { [weak self, weak cell] in
-          guard let `self` = self else { return }
-          let requestId = self.photoLibrary.imageAsset(asset: phAsset, size: self.thumbnailSize, completionBlock: { (image,complete) in
-            DispatchQueue.main.async {
-              if self.requestIds[indexPath] != nil {
-                cell?.imageView?.image = image
-                cell?.update(with: phAsset)
-                if self.allowedVideo {
-                  cell?.durationView?.isHidden = asset.type != .video
-                  cell?.duration = asset.type == .video ? phAsset.duration : nil
-                }
-                if complete {
-                  self.requestIds.removeValue(forKey: indexPath)
-                }
-              }
-            }
-          })
-          if requestId > 0 {
-            self.requestIds[indexPath] = requestId
-          }
-        }
       }
-      if self.allowedLivePhotos {
-        cell.liveBadgeImageView?.image = asset.type == .livePhoto ? PHLivePhotoView.livePhotoBadgeImage(options: .overContent) : nil
-        cell.livePhotoView?.delegate = asset.type == .livePhoto ? self : nil
-      }
+    }
+    if self.allowedLivePhotos {
+      cell.liveBadgeImageView?.image = asset.type == .livePhoto ? PHLivePhotoView.livePhotoBadgeImage(options: .overContent) : nil
+      cell.livePhotoView?.delegate = asset.type == .livePhoto ? self : nil
     }
     cell.alpha = 0
     UIView.transition(with: cell, duration: 0.1, options: .curveEaseIn, animations: {

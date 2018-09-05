@@ -25,11 +25,10 @@ public struct SVAsset {
   }
   
   var state = CloudDownloadState.ready
-  public var phAsset: PHAsset? = nil
+  public let phAsset: PHAsset
   public var selectedOrder: Int = 0
   public var type: AssetType {
     get {
-      guard let phAsset = self.phAsset else { return .photo }
       if phAsset.mediaSubtypes.contains(.photoLive) {
         return .livePhoto
       }else if phAsset.mediaType == .video {
@@ -42,7 +41,6 @@ public struct SVAsset {
   
   public var fullResolutionImage: UIImage? {
     get {
-      guard let phAsset = self.phAsset else { return nil }
       return TLPhotoLibrary.fullResolutionImageData(asset: phAsset)
     }
   }
@@ -57,19 +55,18 @@ public struct SVAsset {
   
   @discardableResult
   public func cloudImageDownload(progressBlock: @escaping (Double) -> Void, completionBlock:@escaping (UIImage?)-> Void ) -> PHImageRequestID? {
-    guard let phAsset = self.phAsset else { return nil }
     return TLPhotoLibrary.cloudImageDownload(asset: phAsset, progressBlock: progressBlock, completionBlock: completionBlock)
   }
   
   public var originalFileName: String? {
     get {
-      guard let phAsset = self.phAsset,let resource = PHAssetResource.assetResources(for: phAsset).first else { return nil }
+      guard let resource = PHAssetResource.assetResources(for: phAsset).first else { return nil }
       return resource.originalFilename
     }
   }
   
   public func photoSize(options: PHImageRequestOptions? = nil ,completion: @escaping ((Int)->Void), livePhotoVideoSize: Bool = false) {
-    guard let phAsset = self.phAsset, self.type == .photo else { completion(-1); return }
+    guard self.type == .photo else { completion(-1); return }
     var resource: PHAssetResource? = nil
     if phAsset.mediaSubtypes.contains(.photoLive) == true, livePhotoVideoSize {
       resource = PHAssetResource.assetResources(for: phAsset).filter { $0.type == .pairedVideo }.first
@@ -94,7 +91,7 @@ public struct SVAsset {
   }
   
   public func videoSize(options: PHVideoRequestOptions? = nil, completion: @escaping ((Int)->Void)) {
-    guard let phAsset = self.phAsset, self.type == .video else {  completion(-1); return }
+    guard self.type == .video else {  completion(-1); return }
     let resource = PHAssetResource.assetResources(for: phAsset).filter { $0.type == .video }.first
     if let fileSize = resource?.value(forKey: "fileSize") as? Int {
       completion(fileSize)
@@ -141,7 +138,6 @@ public struct SVAsset {
   // false : If you want mov file at live photos
   // true  : If you want png file at live photos ( HEIC )
   public func tempCopyMediaFile(videoRequestOptions: PHVideoRequestOptions? = nil, imageRequestOptions: PHImageRequestOptions? = nil, exportPreset: String = AVAssetExportPresetHighestQuality, convertLivePhotosToJPG: Bool = false, progressBlock:((Double) -> Void)? = nil, completionBlock:@escaping ((URL,String) -> Void)) -> PHImageRequestID? {
-    guard let phAsset = self.phAsset else { return nil }
     var type: PHAssetResourceType? = nil
     if phAsset.mediaSubtypes.contains(.photoLive) == true, convertLivePhotosToJPG == false {
       type = .pairedVideo
@@ -220,7 +216,7 @@ public struct SVAsset {
   //There is many way that export a video.
   //This method was one of them.
   public func exportVideoFile(options: PHVideoRequestOptions? = nil, progressBlock:((Float) -> Void)? = nil, completionBlock:@escaping ((URL,String) -> Void)) {
-    guard let phAsset = self.phAsset, phAsset.mediaType == .video else { return }
+    guard phAsset.mediaType == .video else { return }
     var type = PHAssetResourceType.video
     guard let resource = (PHAssetResource.assetResources(for: phAsset).filter{ $0.type == type }).first else { return }
     let fileName = resource.originalFilename
@@ -268,20 +264,20 @@ public struct SVAsset {
     }
   }
   
-  init(with asset: PHAsset?) {
+  init(with asset: PHAsset) {
     self.phAsset = asset
   }
 }
 
 extension SVAsset: Equatable {
   public static func ==(lhs: SVAsset, rhs: SVAsset) -> Bool {
-    guard let lphAsset = lhs.phAsset, let rphAsset = rhs.phAsset else { return false }
-    return lphAsset.localIdentifier == rphAsset.localIdentifier
+    return lhs.phAsset.localIdentifier == rhs.phAsset.localIdentifier
   }
 }
 
 struct SVAssetCollection {
-  var phAssetCollection: PHAssetCollection?
+  
+  let phAssetCollection: PHAssetCollection
   var fetchResult: PHFetchResult<PHAsset>? = nil
   var useCameraButton: Bool = false
   var recentPosition: CGPoint = CGPoint.zero
