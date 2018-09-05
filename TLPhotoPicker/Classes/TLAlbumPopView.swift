@@ -8,7 +8,8 @@
 
 import UIKit
 
-protocol PopupViewProtocol: class {
+protocol PopupViewProtocol: AnyObject {
+  
   var bgView: UIView! { get set }
   var popupView: UIView! { get set }
   var originalFrame: CGRect { get set }
@@ -17,30 +18,35 @@ protocol PopupViewProtocol: class {
 }
 
 extension PopupViewProtocol where Self: UIView {
+  
   fileprivate func getFrame(scale: CGFloat) -> CGRect {
-    var frame = self.originalFrame
+    var frame = originalFrame
     frame.size.width = frame.size.width * scale
     frame.size.height = frame.size.height * scale
     frame.origin.x = self.frame.width/2 - frame.width/2
     return frame
   }
+  
   func setupPopupFrame() {
-    if self.originalFrame != self.popupView.frame {
-      self.originalFrame = self.popupView.frame
+    if originalFrame != popupView.frame {
+      originalFrame = popupView.frame
     }
   }
+  
   func show(_ show: Bool, duration: TimeInterval = 0.1) {
-    guard self.show != show else { return }
-    self.layer.removeAllAnimations()
-    self.isHidden = false
-    self.popupView.frame = show ? getFrame(scale: 0.1) : self.popupView.frame
-    self.bgView.alpha = show ? 0 : 1
+    guard self.show != show else {
+      return
+    }
+    layer.removeAllAnimations()
+    isHidden = false
+    popupView.frame = show ? getFrame(scale: 0.1) : popupView.frame
+    bgView.alpha = show ? 0 : 1
     UIView.animate(withDuration: duration, animations: {
       self.bgView.alpha = show ? 1 : 0
       self.popupView.transform = show ? CGAffineTransform(scaleX: 1.05, y: 1.05) : CGAffineTransform(scaleX: 0.1, y: 0.1)
       self.popupView.frame = show ? self.getFrame(scale: 1.05) : self.getFrame(scale: 0.1)
-    }) { _ in
-      self.isHidden = show ? false : true
+    }, completion: { _ in
+      self.isHidden = !show
       UIView.animate(withDuration: duration) {
         if show {
           self.popupView.transform = CGAffineTransform(scaleX: 1, y: 1)
@@ -48,11 +54,12 @@ extension PopupViewProtocol where Self: UIView {
         }
         self.show = show
       }
-    }
+    })
   }
 }
 
-open class TLAlbumPopView: UIView,PopupViewProtocol {
+open class TLAlbumPopView: UIView, PopupViewProtocol {
+  
   @IBOutlet var bgView: UIView!
   @IBOutlet var popupView: UIView!
   @IBOutlet var popupViewHeight: NSLayoutConstraint!
@@ -66,13 +73,14 @@ open class TLAlbumPopView: UIView,PopupViewProtocol {
   
   override open func awakeFromNib() {
     super.awakeFromNib()
-    self.popupView.layer.cornerRadius = 5.0
+    
+    popupView.layer.cornerRadius = 5.0
     let tapGesture = UITapGestureRecognizer(target: self, action: #selector(tapBgView))
-    self.bgView.addGestureRecognizer(tapGesture)
-    self.tableView.register(UINib(nibName: "TLCollectionTableViewCell", bundle: Bundle(for: TLCollectionTableViewCell.self)), forCellReuseIdentifier: "TLCollectionTableViewCell")
+    bgView.addGestureRecognizer(tapGesture)
+    tableView.register(UINib(nibName: "TLCollectionTableViewCell", bundle: Bundle(for: TLCollectionTableViewCell.self)), forCellReuseIdentifier: "TLCollectionTableViewCell")
   }
   
   @objc func tapBgView() {
-    self.show(false)
+    show(false)
   }
 }

@@ -9,6 +9,7 @@
 import UIKit
 
 class TLCollectionTableViewCell: UITableViewCell {
+  
   @IBOutlet var thumbImageView: UIImageView!
   @IBOutlet var titleLabel: UILabel!
   @IBOutlet var subTitleLabel: UILabel!
