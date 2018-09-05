@@ -603,7 +603,7 @@ extension TLPhotosPickerViewController: PHLivePhotoViewDelegate {
     stopPlay()
     if asset.type == .video {
       guard let cell = self.collectionView.cellForItem(at: indexPath) as? TLPhotoCollectionViewCell else { return }
-      let requestId = self.photoLibrary.videoAsset(asset: asset.phAsset, completionBlock: { (playerItem, info) in
+      let requestId = self.photoLibrary.videoAsset(asset: asset.phAsset, completion: { (playerItem, info) in
         DispatchQueue.main.sync { [weak self, weak cell] in
           guard let `self` = self, let cell = cell, cell.player == nil else { return }
           let player = AVPlayer(playerItem: playerItem)
@@ -618,7 +618,7 @@ extension TLPhotosPickerViewController: PHLivePhotoViewDelegate {
     }else if asset.type == .livePhoto {
       
       guard let cell = self.collectionView.cellForItem(at: indexPath) as? TLPhotoCollectionViewCell else { return }
-      let requestId = self.photoLibrary.livePhotoAsset(asset: asset.phAsset, size: self.thumbnailSize, completionBlock: { [weak cell] (livePhoto,complete) in
+      let requestId = self.photoLibrary.livePhotoAsset(asset: asset.phAsset, size: self.thumbnailSize, completion: { [weak cell] (livePhoto,complete) in
         cell?.livePhotoView?.isHidden = false
         cell?.livePhotoView?.livePhoto = livePhoto
         cell?.livePhotoView?.isMuted = true
@@ -857,7 +857,7 @@ extension TLPhotosPickerViewController: UICollectionViewDelegate,UICollectionVie
     } else {
       queue.async { [weak self, weak cell] in
         guard let `self` = self else { return }
-        let requestId = self.photoLibrary.imageAsset(asset: asset.phAsset, size: self.thumbnailSize, completionBlock: { (image,complete) in
+        let requestId = self.photoLibrary.imageAsset(asset: asset.phAsset, size: self.thumbnailSize, completion: { (image,complete) in
           DispatchQueue.main.async {
             if self.requestIds[indexPath] != nil {
               cell?.imageView?.image = image
@@ -973,7 +973,7 @@ extension TLPhotosPickerViewController: UITableViewDelegate,UITableViewDataSourc
     if let phAsset = collection.getAsset(at: collection.useCameraButton ? 1 : 0) {
       let scale = UIScreen.main.scale
       let size = CGSize(width: 80*scale, height: 80*scale)
-      self.photoLibrary.imageAsset(asset: phAsset, size: size, completionBlock: { [weak cell] (image,complete) in
+      self.photoLibrary.imageAsset(asset: phAsset, size: size, completion: { [weak cell] (image,complete) in
         DispatchQueue.main.async {
           cell?.thumbImageView.image = image
         }

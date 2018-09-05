@@ -55,7 +55,7 @@ public struct SVAsset {
   
   @discardableResult
   public func cloudImageDownload(progressBlock: @escaping (Double) -> Void, completionBlock:@escaping (UIImage?)-> Void ) -> PHImageRequestID? {
-    return SVPhotoLibrary.cloudImageDownload(asset: phAsset, progressBlock: progressBlock, completionBlock: completionBlock)
+    return SVPhotoLibrary.cloudImageDownload(asset: phAsset, progressHandler: progressBlock, completion: completionBlock)
   }
   
   public var originalFileName: String? {

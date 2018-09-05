@@ -9,7 +9,8 @@
 import Foundation
 import Photos
 
-protocol TLPhotoLibraryDelegate: class {
+protocol TLPhotoLibraryDelegate: AnyObject {
+  
   func loadCameraRollCollection(collection: SVAssetCollection)
   func loadCompleteAllCollection(collections: [SVAssetCollection])
   func focusCollection(collection: SVAssetCollection)
@@ -17,47 +18,41 @@ protocol TLPhotoLibraryDelegate: class {
 
 class SVPhotoLibrary {
   
-  weak var delegate: TLPhotoLibraryDelegate? = nil
+  weak var delegate: TLPhotoLibraryDelegate?
   
-  lazy var imageManager: PHCachingImageManager = {
-    return PHCachingImageManager()
-  }()
+  lazy var imageManager: PHCachingImageManager = PHCachingImageManager()
   
   deinit {
     //        print("deinit TLPhotoLibrary")
   }
   
   @discardableResult
-  func livePhotoAsset(asset: PHAsset, size: CGSize = CGSize(width: 720, height: 1280), progressBlock: Photos.PHAssetImageProgressHandler? = nil, completionBlock:@escaping (PHLivePhoto,Bool)-> Void ) -> PHImageRequestID {
+  func livePhotoAsset(asset: PHAsset, size: CGSize = CGSize(width: 720, height: 1280), progressHandler: PHAssetImageProgressHandler? = nil, completion: @escaping (PHLivePhoto, Bool) -> Void) -> PHImageRequestID {
     let options = PHLivePhotoRequestOptions()
     options.deliveryMode = .opportunistic
     options.isNetworkAccessAllowed = true
-    options.progressHandler = progressBlock
+    options.progressHandler = progressHandler
     let scale = min(UIScreen.main.scale,2)
     let targetSize = CGSize(width: size.width*scale, height: size.height*scale)
-    let requestId = self.imageManager.requestLivePhoto(for: asset, targetSize: targetSize, contentMode: .aspectFill, options: options) { (livePhoto, info) in
+    return imageManager.requestLivePhoto(for: asset, targetSize: targetSize, contentMode: .aspectFill, options: options) { livePhoto, info in
       let complete = (info?["PHImageResultIsDegradedKey"] as? Bool) == false
       if let livePhoto = livePhoto {
-        completionBlock(livePhoto,complete)
+        completion(livePhoto, complete)
       }
     }
-    return requestId
   }
   
   @discardableResult
-  func videoAsset(asset: PHAsset, size: CGSize = CGSize(width: 720, height: 1280), progressBlock: Photos.PHAssetImageProgressHandler? = nil, completionBlock:@escaping (AVPlayerItem?, [AnyHashable : Any]?) -> Void ) -> PHImageRequestID {
+  func videoAsset(asset: PHAsset, size: CGSize = CGSize(width: 720, height: 1280), progressHandler: PHAssetImageProgressHandler? = nil, completion: @escaping (AVPlayerItem?, [AnyHashable: Any]?) -> Void) -> PHImageRequestID {
     let options = PHVideoRequestOptions()
     options.isNetworkAccessAllowed = true
     options.deliveryMode = .automatic
-    options.progressHandler = progressBlock
-    let requestId = self.imageManager.requestPlayerItem(forVideo: asset, options: options, resultHandler: { playerItem, info in
-      completionBlock(playerItem,info)
-    })
-    return requestId
+    options.progressHandler = progressHandler
+    return imageManager.requestPlayerItem(forVideo: asset, options: options, resultHandler: completion)
   }
   
   @discardableResult
-  func imageAsset(asset: PHAsset, size: CGSize = CGSize(width: 160, height: 160), options: PHImageRequestOptions? = nil, completionBlock:@escaping (UIImage,Bool)-> Void ) -> PHImageRequestID {
+  func imageAsset(asset: PHAsset, size: CGSize = CGSize(width: 160, height: 160), options: PHImageRequestOptions? = nil, completion: @escaping (UIImage, Bool) -> Void) -> PHImageRequestID {
     var options = options
     if options == nil {
       options = PHImageRequestOptions()
@@ -68,38 +63,36 @@ class SVPhotoLibrary {
     }
     let scale = min(UIScreen.main.scale,2)
     let targetSize = CGSize(width: size.width*scale, height: size.height*scale)
-    let requestId = self.imageManager.requestImage(for: asset, targetSize: targetSize, contentMode: .aspectFill, options: options) { image, info in
+    return imageManager.requestImage(for: asset, targetSize: targetSize, contentMode: .aspectFill, options: options) { image, info in
       let complete = (info?["PHImageResultIsDegradedKey"] as? Bool) == false
       if let image = image {
-        completionBlock(image,complete)
+        completion(image,complete)
       }
     }
-    return requestId
   }
   
   func cancelPHImageRequest(requestId: PHImageRequestID) {
-    self.imageManager.cancelImageRequest(requestId)
+    imageManager.cancelImageRequest(requestId)
   }
   
   @discardableResult
-  class func cloudImageDownload(asset: PHAsset, size: CGSize = PHImageManagerMaximumSize, progressBlock: @escaping (Double) -> Void, completionBlock:@escaping (UIImage?)-> Void ) -> PHImageRequestID {
+  class func cloudImageDownload(asset: PHAsset, size: CGSize = PHImageManagerMaximumSize, progressHandler: @escaping (Double) -> Void, completion: @escaping (UIImage?) -> Void) -> PHImageRequestID {
     let options = PHImageRequestOptions()
     options.isSynchronous = false
     options.isNetworkAccessAllowed = true
     options.deliveryMode = .opportunistic
     options.version = .current
     options.resizeMode = .exact
-    options.progressHandler = { (progress,error,stop,info) in
-      progressBlock(progress)
+    options.progressHandler = { progress, error, stop, info in
+      progressHandler(progress)
     }
-    let requestId = PHCachingImageManager().requestImageData(for: asset, options: options) { (imageData, dataUTI, orientation, info) in
-      if let data = imageData,let _ = info {
-        completionBlock(UIImage(data: data))
-      }else{
-        completionBlock(nil)//error
+    return PHCachingImageManager().requestImageData(for: asset, options: options) { imageData, dataUTI, orientation, info in
+      if let data = imageData, let _ = info {
+        completion(UIImage(data: data))
+      } else {
+        completion(nil)
       }
     }
-    return requestId
   }
   
   @discardableResult
@@ -110,7 +103,7 @@ class SVPhotoLibrary {
     options.isNetworkAccessAllowed = false
     options.version = .current
     var image: UIImage? = nil
-    _ = PHCachingImageManager().requestImageData(for: asset, options: options) { (imageData, dataUTI, orientation, info) in
+    _ = PHCachingImageManager().requestImageData(for: asset, options: options) { imageData, dataUTI, orientation, info in
       if let data = imageData {
         image = UIImage(data: data)
       }
@@ -120,10 +113,11 @@ class SVPhotoLibrary {
 }
 
 extension PHFetchOptions {
+  
   func merge(predicate: NSPredicate) {
     if let storePredicate = self.predicate {
       self.predicate = NSCompoundPredicate(andPredicateWithSubpredicates: [storePredicate, predicate])
-    }else {
+    } else {
       self.predicate = predicate
     }
   }
@@ -236,4 +230,3 @@ extension SVPhotoLibrary {
     }
   }
 }
-
